@@ -138,29 +138,60 @@ beforeEach(() => {
   state.signOut.mockResolvedValue({ error: null });
   state.rpc.mockResolvedValue({ data: null, error: null });
 });
+function completeOnboardingForm() {
+  fireEvent.click(screen.getByRole("button", { name: "Get started" }));
+  expect(screen.queryByLabelText("Full name")).not.toBeInTheDocument();
+  expect(screen.getByLabelText("Height (cm)")).toHaveValue(null);
+  expect(screen.getByLabelText("Current / starting weight (kg)")).toHaveValue(null);
+  fireEvent.change(screen.getByLabelText("Date of birth"), { target: { value: "2000-01-01" } });
+  fireEvent.change(screen.getByLabelText("Height (cm)"), { target: { value: "171" } });
+  fireEvent.change(screen.getByLabelText("Current / starting weight (kg)"), {
+    target: { value: "60" },
+  });
+  fireEvent.change(screen.getByLabelText("Activity level"), { target: { value: "active" } });
+  fireEvent.click(screen.getByRole("button", { name: "Continue" }));
+  fireEvent.change(screen.getByLabelText("Primary goal"), { target: { value: "build_muscle" } });
+  fireEvent.click(screen.getByRole("button", { name: "Continue" }));
+  for (const [label, value] of [
+    ["Target weight (kg)", "65"],
+    ["Weekly weight change (kg; negative for loss)", "0.3"],
+    ["Daily calories (kcal)", "2300"],
+    ["Daily protein (g)", "110"],
+  ] as const)
+    fireEvent.change(screen.getByLabelText(label), { target: { value } });
+  fireEvent.click(screen.getByRole("button", { name: "Continue" }));
+  expect(screen.getByLabelText("Workout location")).toHaveValue("");
+  expect(screen.getAllByRole("checkbox").every((x) => !(x as HTMLInputElement).checked)).toBe(true);
+  fireEvent.change(screen.getByLabelText("Workout location"), { target: { value: "Gym" } });
+  for (const label of ["Bodyweight", "Resistance Bands", "Sun", "Tue", "Thu", "Fri", "Sat"])
+    fireEvent.click(screen.getByLabelText(label));
+  fireEvent.change(screen.getByLabelText("Experience"), { target: { value: "intermediate" } });
+  fireEvent.click(screen.getByRole("button", { name: "Continue" }));
+}
 describe("Core MVP interactions", () => {
-  it("saves all onboarding steps through one atomic database operation", async () => {
+  it("saves the account name and every chosen onboarding value through one atomic operation", async () => {
     show(<Onboarding />);
-    fireEvent.click(screen.getByRole("button", { name: "Get started" }));
-    fireEvent.change(screen.getByLabelText("Full name"), { target: { value: "Test User" } });
-    fireEvent.change(screen.getByLabelText("Date of birth"), { target: { value: "2000-01-01" } });
-    fireEvent.click(screen.getByRole("button", { name: "Continue" }));
-    fireEvent.click(screen.getByRole("button", { name: "Continue" }));
-    fireEvent.change(screen.getByLabelText("Daily calories (kcal)"), { target: { value: "2100" } });
-    fireEvent.change(screen.getByLabelText("Daily protein (g)"), { target: { value: "95" } });
-    fireEvent.click(screen.getByRole("button", { name: "Continue" }));
-    fireEvent.click(screen.getByRole("button", { name: "Continue" }));
+    completeOnboardingForm();
+    expect(screen.getByText("Sun, Tue, Thu, Fri, Sat")).toBeInTheDocument();
+    expect(screen.queryByText(/Monday, Wednesday and Friday/)).not.toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Save and open dashboard" }));
     await waitFor(() =>
       expect(state.rpc).toHaveBeenCalledWith("complete_onboarding", {
         payload: expect.objectContaining({
           full_name: "Test User",
-          starting_weight_kg: 48,
-          target_weight_kg: 55,
-          daily_calorie_target: 2100,
-          daily_protein_target_g: 95,
-          preferred_days: [1, 3, 5],
-          equipment: ["Dumbbells"],
+          date_of_birth: "2000-01-01",
+          height_cm: 171,
+          starting_weight_kg: 60,
+          target_weight_kg: 65,
+          goal_type: "build_muscle",
+          weekly_weight_change_target_kg: 0.3,
+          daily_calorie_target: 2300,
+          daily_protein_target_g: 110,
+          workout_location: "Gym",
+          experience_level: "intermediate",
+          activity_level: "active",
+          preferred_days: [0, 2, 4, 5, 6],
+          equipment: ["Bodyweight", "Resistance Bands"],
         }),
       }),
     );
@@ -260,10 +291,7 @@ describe("Core MVP interactions", () => {
     state.signOut.mockResolvedValue({ error: null });
     state.rpc.mockResolvedValue({ data: null, error: { message: "Connection interrupted" } });
     show(<Onboarding />);
-    fireEvent.click(screen.getByRole("button", { name: "Get started" }));
-    fireEvent.change(screen.getByLabelText("Full name"), { target: { value: "Test User" } });
-    fireEvent.change(screen.getByLabelText("Date of birth"), { target: { value: "2000-01-01" } });
-    for (let i = 0; i < 4; i++) fireEvent.click(screen.getByRole("button", { name: "Continue" }));
+    completeOnboardingForm();
     fireEvent.click(screen.getByRole("button", { name: "Save and open dashboard" }));
     await waitFor(() =>
       expect(screen.getByRole("alert")).toHaveTextContent("Connection interrupted"),
@@ -503,4 +531,29 @@ it("keeps settings sections hidden until opened and mounts only the selected for
   expect(within(account).getByLabelText("New password")).toBeInTheDocument();
   expect(screen.queryByLabelText("Body weight unit")).not.toBeInTheDocument();
   expect(state.write).not.toHaveBeenCalled();
+});
+
+it("keeps review selections when going back and shows a spinner during saving", async () => {
+  let finish: (value: unknown) => void = () => {};
+  state.rpc.mockImplementationOnce(
+    () =>
+      new Promise((resolve) => {
+        finish = resolve;
+      }),
+  );
+  show(<Onboarding />);
+  completeOnboardingForm();
+  fireEvent.click(screen.getByRole("button", { name: "Back" }));
+  expect(screen.getByLabelText("Sat")).toBeChecked();
+  expect(screen.getByLabelText("Dumbbells")).not.toBeChecked();
+  fireEvent.click(screen.getByRole("button", { name: "Continue" }));
+  fireEvent.click(screen.getByRole("button", { name: "Save and open dashboard" }));
+  const button = screen.getByRole("button", { name: "Saving your plan..." });
+  expect(button).toBeDisabled();
+  expect(button).toHaveAttribute("aria-busy", "true");
+  expect(button.querySelector(".animate-spin")).not.toBeNull();
+  fireEvent.click(button);
+  expect(state.rpc).toHaveBeenCalledTimes(1);
+  finish({ data: null, error: null });
+  await waitFor(() => expect(state.navigate).toHaveBeenCalledWith({ to: "/dashboard" }));
 });

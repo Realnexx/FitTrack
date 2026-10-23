@@ -37,7 +37,21 @@ beforeAll(async () => {
   await db.exec(
     `create role authenticated; create role service_role; create role anon; create schema auth; create table auth.users(id uuid primary key,raw_user_meta_data jsonb default '{}'::jsonb); create function auth.uid() returns uuid language sql stable as $$select nullif(current_setting('request.jwt.claim.sub',true),'')::uuid$$; grant usage on schema public,auth to authenticated,anon; grant execute on function auth.uid() to authenticated,anon;`,
   );
-  for (const file of ["0000_migration.sql", "0001_mvp_workflows.sql", "0002_account_requests.sql"])
+  await db.exec(`create schema storage;
+    create table storage.buckets(id text primary key,name text,public boolean,file_size_limit bigint,allowed_mime_types text[]);
+    create table storage.objects(id uuid default gen_random_uuid(),bucket_id text,name text);
+    create function storage.foldername(name text) returns text[] language sql immutable as $$select string_to_array(name,'/')$$;
+    alter table storage.objects enable row level security;
+    grant usage on schema storage to authenticated,anon;
+    grant all on storage.objects to authenticated;
+    grant select on storage.objects to anon;`);
+  for (const file of [
+    "0000_migration.sql",
+    "0001_mvp_workflows.sql",
+    "0002_account_requests.sql",
+    "0003_onboarding_preferences.sql",
+    "0004_profile_connections.sql",
+  ])
     await db.exec(
       readFileSync(new URL("../../drizzle/migrations/" + file, import.meta.url), "utf8"),
     );
@@ -195,5 +209,135 @@ describe("Database MVP workflows and row level security", () => {
     expect(settings.rows).toHaveLength(0);
     const plans = await db.query("select * from workout_plans where user_id=$1", [bob]);
     expect(plans.rows).toHaveLength(0);
+  });
+});
+
+it("persists every onboarding answer and schedules exactly the selected days atomically", async () => {
+  const user = "33333333-3333-4333-8333-333333333333";
+  await db.query("insert into auth.users(id,raw_user_meta_data) values($1,$2::jsonb)", [
+    user,
+    JSON.stringify({ full_name: "Registered Name" }),
+  ]);
+  const input = {
+    ...payload,
+    full_name: "Registered Name",
+    height_cm: 171,
+    workout_location: "Gym",
+    activity_level: "active",
+    experience_level: "intermediate",
+    equipment: ["Bodyweight", "Resistance Bands"],
+    preferred_days: [0, 2, 4, 5, 6],
+    starting_weight_kg: 60,
+    target_weight_kg: 65,
+    weekly_weight_change_target_kg: 0.3,
+    daily_calorie_target: 2300,
+    daily_protein_target_g: 110,
+  };
+  await asUser(user, (tx) =>
+    tx.query("select complete_onboarding($1::jsonb)", [JSON.stringify(input)]),
+  );
+  await asUser(user, (tx) =>
+    tx.query("select complete_onboarding($1::jsonb)", [JSON.stringify(input)]),
+  );
+  const result = await asUser(user, async (tx) => ({
+    profile: (await tx.query("select * from profiles")).rows[0],
+    goals: (await tx.query("select * from fitness_goals")).rows,
+    schedule: (
+      await tx.query(
+        "select s.day_of_week,s.week_parity,p.name from workout_schedule s join workout_plans p on p.id=s.workout_plan_id order by day_of_week,week_parity",
+      )
+    ).rows,
+  }));
+  expect(result.profile).toMatchObject({
+    full_name: input.full_name,
+    height_cm: "171.0",
+    activity_level: "active",
+    experience_level: "intermediate",
+    workout_location: "Gym",
+    equipment: input.equipment,
+    preferred_days: input.preferred_days,
+    onboarding_completed: true,
+  });
+  expect(result.goals).toHaveLength(1);
+  expect(result.goals[0]).toMatchObject({
+    starting_weight_kg: "60.00",
+    target_weight_kg: "65.00",
+    daily_calorie_target: 2300,
+    daily_protein_target_g: 110,
+  });
+  expect(result.schedule).toHaveLength(10);
+  for (const [position, day] of input.preferred_days.entries()) {
+    expect(result.schedule).toContainEqual({
+      day_of_week: day,
+      week_parity: "odd",
+      name: position % 2 === 0 ? "Workout A" : "Workout B",
+    });
+    expect(result.schedule).toContainEqual({
+      day_of_week: day,
+      week_parity: "even",
+      name: position % 2 === 0 ? "Workout B" : "Workout A",
+    });
+  }
+});
+
+it("rejects invalid training days without changing profile, goal or starter schedule", async () => {
+  const user = "44444444-4444-4444-8444-444444444444";
+  await db.query("insert into auth.users(id) values($1)", [user]);
+  await expect(
+    asUser(user, (tx) =>
+      tx.query("select complete_onboarding($1::jsonb)", [
+        JSON.stringify({ ...payload, preferred_days: [7] }),
+      ]),
+    ),
+  ).rejects.toThrow("Choose valid training days");
+  const result = await asUser(user, async (tx) => ({
+    profile: (await tx.query("select onboarding_completed from profiles")).rows[0],
+    goals: (await tx.query("select * from fitness_goals")).rows,
+    schedule: (await tx.query("select * from workout_schedule")).rows,
+  }));
+  expect(result.profile).toMatchObject({ onboarding_completed: false });
+  expect(result.goals).toHaveLength(0);
+  expect(result.schedule).toHaveLength(6);
+});
+
+describe("avatar storage security", () => {
+  it("allows own uploads, rejects other folders, and prevents cross-account deletion", async () => {
+    await asUser(alice, (tx) =>
+      tx.query("insert into storage.objects(bucket_id,name) values ('avatars',$1)", [
+        alice + "/photo.png",
+      ]),
+    );
+    await expect(
+      asUser(bob, (tx) =>
+        tx.query("insert into storage.objects(bucket_id,name) values ('avatars',$1)", [
+          alice + "/other.png",
+        ]),
+      ),
+    ).rejects.toThrow();
+    const deleted = await asUser(bob, (tx) =>
+      tx.query("delete from storage.objects where name=$1 returning name", [alice + "/photo.png"]),
+    );
+    expect(deleted.rows).toHaveLength(0);
+    const own = await asUser(alice, (tx) =>
+      tx.query("delete from storage.objects where name=$1 returning name", [alice + "/photo.png"]),
+    );
+    expect(own.rows).toHaveLength(1);
+  });
+  it("saves photo and social links only on the owning profile", async () => {
+    await asUser(alice, (tx) =>
+      tx.query("update profiles set avatar_url=$1,social_links=$2 where id=$3", [
+        "https://example.com/photo.png",
+        JSON.stringify({ github: "https://github.com/person" }),
+        alice,
+      ]),
+    );
+    const denied = await asUser(bob, (tx) =>
+      tx.query("update profiles set avatar_url=null where id=$1 returning id", [alice]),
+    );
+    expect(denied.rows).toHaveLength(0);
+    const own = await asUser(alice, (tx) =>
+      tx.query<{ avatar_url: string }>("select avatar_url from profiles where id=$1", [alice]),
+    );
+    expect(own.rows[0]?.avatar_url).toBe("https://example.com/photo.png");
   });
 });

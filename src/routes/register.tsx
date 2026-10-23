@@ -1,3 +1,4 @@
+import { GoogleAuthButton } from "@/components/google-auth-button";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -130,6 +131,7 @@ function Register() {
         </>
       }
     >
+      <GoogleAuthButton />
       <form onSubmit={onSubmit} className="space-y-4" noValidate>
         {field("full_name", "Full name", "text", "name")}
         {field("email", "Email", "email", "email")}

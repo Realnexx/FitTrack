@@ -1,3 +1,5 @@
+import { ProfilePhotoEditor } from "@/components/profile-photo-editor";
+import { AccountConnections } from "@/components/account-connections";
 import { DeleteAccountRequest } from "@/components/delete-account-request";
 import { heightToDisplay, heightToCm } from "@/lib/measurements";
 import { InstallApp } from "@/components/install-app";
@@ -19,13 +21,16 @@ import {
   UserRound,
   SlidersHorizontal,
   ShieldCheck,
+  Link2,
   LogOut,
   ArrowUpRight,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 export const Route = createFileRoute("/_app/settings")({ component: Settings });
 export function Settings() {
-  const [section, setSection] = useState<"profile" | "preferences" | "account" | null>(null);
+  const [section, setSection] = useState<
+    "profile" | "preferences" | "account" | "connections" | null
+  >(null);
   const formId = useId();
   const profile = useProfile();
   const settings = useSettings();
@@ -160,7 +165,7 @@ export function Settings() {
           </div>
         </div>
       </section>
-      <div className="mb-6 grid gap-3 sm:grid-cols-3">
+      <div className="mb-6 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
         {[
           {
             value: "profile" as const,
@@ -173,6 +178,12 @@ export function Settings() {
             label: "Preferences",
             body: "Units, dates & time zone",
             icon: SlidersHorizontal,
+          },
+          {
+            value: "connections" as const,
+            label: "Connections",
+            body: "Sign-in accounts & social links",
+            icon: Link2,
           },
           {
             value: "account" as const,
@@ -211,31 +222,27 @@ export function Settings() {
             ? "Personal profile"
             : section === "preferences"
               ? "Preferences"
-              : "Account & security"
+              : section === "connections"
+                ? "Connections"
+                : "Account & security"
         }
         description={
           section === "profile"
             ? "Your details and training preferences."
             : section === "preferences"
               ? "Choose your units, time zone and display preferences."
-              : "Manage your password and account controls."
+              : section === "connections"
+                ? "Manage your connected accounts and social profiles."
+                : "Manage your password and account controls."
         }
       >
         {section === "profile" && (
           <div key="profile">
-            <div className="mb-6 flex items-center gap-3 rounded-2xl border border-primary/10 bg-primary/5 p-4">
-              <UserAvatar
-                name={p?.full_name || "FitTrack member"}
-                src={photo}
-                className="size-12"
-              />
-              <div className="min-w-0">
-                <p className="truncate text-sm font-semibold">{p?.full_name || "Your profile"}</p>
-                <p className="mt-1 text-xs text-muted-foreground">
-                  A few details to make your routine yours.
-                </p>
-              </div>
-            </div>
+            <ProfilePhotoEditor
+              name={p?.full_name || "FitTrack member"}
+              photo={photo}
+              customPhoto={p?.avatar_url ?? null}
+            />
             <form
               id={formId}
               key={s?.height_unit}
@@ -485,36 +492,45 @@ export function Settings() {
             </div>
           </div>
         )}
-        <ModalActionBar>
-          <ModalFormActions
-            form={formId}
-            hint={
-              section === "profile"
-                ? "Keep your details up to date."
-                : section === "preferences"
-                  ? "Your app, your preferences."
-                  : "Password changes apply when you save."
-            }
-            onCancel={() => {
-              setSection(null);
-              setPassword("");
-            }}
-            pending={
-              section === "profile"
-                ? save.isPending
-                : section === "preferences"
-                  ? prefs.isPending
-                  : changePassword.isPending
-            }
-            label={
-              section === "profile"
-                ? "Save profile"
-                : section === "preferences"
-                  ? "Save preferences"
-                  : "Update password"
-            }
+        {section === "connections" && p && (
+          <AccountConnections
+            userId={p.id}
+            links={p.social_links}
+            onClose={() => setSection(null)}
           />
-        </ModalActionBar>
+        )}
+        {section !== "connections" && (
+          <ModalActionBar>
+            <ModalFormActions
+              form={formId}
+              hint={
+                section === "profile"
+                  ? "Keep your details up to date."
+                  : section === "preferences"
+                    ? "Your app, your preferences."
+                    : "Password changes apply when you save."
+              }
+              onCancel={() => {
+                setSection(null);
+                setPassword("");
+              }}
+              pending={
+                section === "profile"
+                  ? save.isPending
+                  : section === "preferences"
+                    ? prefs.isPending
+                    : changePassword.isPending
+              }
+              label={
+                section === "profile"
+                  ? "Save profile"
+                  : section === "preferences"
+                    ? "Save preferences"
+                    : "Update password"
+              }
+            />
+          </ModalActionBar>
+        )}
       </ResponsiveModal>
       <SignOutDialog
         open={logoutOpen}
@@ -525,3 +541,4 @@ export function Settings() {
     </>
   );
 }
+

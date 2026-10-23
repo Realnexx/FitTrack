@@ -1,3 +1,4 @@
+import { GoogleAuthButton } from "@/components/google-auth-button";
 import { signInError } from "@/lib/auth-errors";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useForm } from "react-hook-form";
@@ -67,6 +68,7 @@ function Login() {
         </>
       }
     >
+      <GoogleAuthButton />
       <form onSubmit={onSubmit} className="space-y-4" noValidate>
         <div>
           <Label htmlFor="email">Email</Label>

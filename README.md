@@ -30,7 +30,9 @@ In the connected Supabase project's SQL editor:
 
 The existing connected database may already contain migration 0000; migrations 0001 and 0002 must still be applied. Local automated tests apply all migrations in an isolated PostgreSQL engine. They do not apply changes to your hosted Supabase project.
 
-Create accounts through Supabase Auth / the registration screen after the initial migration so that the new-user trigger creates profiles, settings, A/B plans and the alternating Monday/Wednesday/Friday schedule. Onboarding saves the preferred days separately; change the actual schedule in Workouts.
+4. Apply `drizzle/migrations/0003_onboarding_preferences.sql` to validate onboarding choices and save the selected A/B training schedule in the same transaction.
+
+Create accounts through Supabase Auth / the registration screen after the initial migration so that the new-user trigger creates profiles, settings, A/B plans and the alternating Monday/Wednesday/Friday schedule. Migration `0003_onboarding_preferences.sql` makes onboarding save the actual selected training days as the alternating A/B schedule. Apply it to existing databases before deploying this onboarding update.
 
 In Supabase Authentication URL Configuration, set the production Site URL and permit the appropriate development and production redirect URLs, including `/dashboard` and `/reset-password`. Email confirmations and password-reset emails require working email delivery. The registration screen handles both email-confirmed and immediately authenticated signups.
 
@@ -112,3 +114,21 @@ The write-enabled workflow is skipped unless `FITTRACK_E2E_EMAIL`, `FITTRACK_E2E
 ## Onboarding says the function is missing
 
 If `complete_onboarding(payload)` cannot be found, confirm migration 0001 was applied to the same Supabase project used by the browser. After changing `.env`, fully stop and restart the development process, then reload the browser and sign in again. A hot restart can retain values from the previous project in process memory. If the project matches and the migration was just applied, run `NOTIFY pgrst, 'reload schema';` in the Supabase SQL editor to refresh its API schema cache. Do not rerun the initial schema against an existing database.
+
+### Onboarding update for existing Supabase projects
+
+Run `drizzle/migrations/0003_onboarding_preferences.sql` in the SQL editor of the project used by Vercel. This updates the atomic onboarding function to validate the choices and create the selected training schedule. It does not replace completed users' schedules. Then deploy the updated app. Existing migrations 0000–0002 must already be applied; do not rerun the initial schema.
+
+## Profile photos and connected accounts
+
+Apply `drizzle/migrations/0004_profile_connections.sql` in the Supabase SQL editor after migration 0003, then deploy the updated app. This adds profile photos, social links, and the `avatars` storage bucket. Uploaded profile photos are public; only their owner can upload, replace, or delete files in their account folder. Fitness records keep their existing private policies.
+
+For Google login/signup and linking:
+
+1. Create a Google Cloud OAuth web client. Set the authorized JavaScript origin to `https://fit-track-chi-lilac.vercel.app` and the authorized redirect URI to `https://vgcexdchlguaulwccdcd.supabase.co/auth/v1/callback`.
+2. Enable Google under Supabase Authentication → Sign In / Providers and enter the client ID and secret there. Never place the secret in frontend environment variables.
+3. Set the Supabase Site URL to `https://fit-track-chi-lilac.vercel.app`. Add `https://fit-track-chi-lilac.vercel.app/auth/callback**` to the redirect allowlist. For local testing add `http://localhost:8080/auth/callback**`. Keep the existing dashboard and password-reset redirect entries.
+4. Enable manual identity linking in Supabase Authentication settings. GitHub and Facebook connections require their providers and developer-app credentials configured separately, with the same Supabase provider callback URI.
+5. Redeploy, then test Google signup (new users reach onboarding), returning Google login, and connecting a provider from Settings → Connections. Supabase can automatically link identities sharing a verified email; existing users with different provider email addresses should connect from their signed-in Settings.
+
+Settings also stores optional TikTok, Facebook, GitHub, Instagram and X profile links. A profile URL does not grant sign-in access. Photo updates appear in the profile, header and sidebar; removing a custom photo falls back to an available provider photo or initials.

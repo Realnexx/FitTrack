@@ -164,3 +164,25 @@
     transition-duration: 0.01ms !important;
   }
 }
+
+/* Shared notifications: readable dark cards, clear status accents and touch targets. */
+.fittrack-toaster [data-sonner-toast].fittrack-toast {
+  --toast-accent: var(--primary);
+  background: var(--card); color: var(--foreground); border: 1px solid var(--border);
+  border-left: 3px solid var(--toast-accent); border-radius: 16px;
+  padding: 18px 44px 18px 18px; gap: 14px;
+  box-shadow: 0 12px 40px #0005; font-family: inherit;
+}
+.fittrack-toaster [data-type="error"].fittrack-toast { --toast-accent: var(--destructive); }
+.fittrack-toaster [data-type="warning"].fittrack-toast { --toast-accent: var(--warning); }
+.fittrack-toaster [data-type="info"].fittrack-toast { --toast-accent: var(--info); }
+.fittrack-toaster .fittrack-toast-title { font-size: 14px; font-weight: 700; line-height: 1.45; }
+.fittrack-toaster .fittrack-toast-description { color: var(--muted-foreground); font-size: 12px; line-height: 1.6; margin-top: 4px; }
+.fittrack-toaster .fittrack-toast-icon { color: var(--toast-accent); }
+.fittrack-toaster [data-close-button].fittrack-toast-close {
+  left: auto; right: 8px; top: 8px; transform: none; width: 28px; height: 28px;
+  border: 0; border-radius: 9px; background: transparent; color: var(--muted-foreground);
+}
+.fittrack-toaster [data-close-button].fittrack-toast-close:hover { background: var(--elevated); color: var(--foreground); }
+.fittrack-toaster .fittrack-toast-action { background: var(--primary); color: var(--primary-foreground); border-radius: 8px; }
+.fittrack-toaster .fittrack-toast-cancel { background: var(--elevated); color: var(--foreground); border-radius: 8px; }

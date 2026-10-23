@@ -228,6 +228,8 @@ export type Database = {
       }
       profiles: {
         Row: {
+          avatar_url: string | null
+          social_links: Json
           activity_level: string | null
           created_at: string
           date_of_birth: string | null
@@ -243,6 +245,8 @@ export type Database = {
           workout_location: string | null
         }
         Insert: {
+          avatar_url?: string | null
+          social_links?: Json
           activity_level?: string | null
           created_at?: string
           date_of_birth?: string | null
@@ -258,6 +262,8 @@ export type Database = {
           workout_location?: string | null
         }
         Update: {
+          avatar_url?: string | null
+          social_links?: Json
           activity_level?: string | null
           created_at?: string
           date_of_birth?: string | null

@@ -23,6 +23,7 @@ import { Route as AppProgressRouteImport } from './routes/_app.progress'
 import { Route as AppReportsRouteImport } from './routes/_app.reports'
 import { Route as AppSettingsRouteImport } from './routes/_app.settings'
 import { Route as AppWorkoutsRouteImport } from './routes/_app.workouts'
+import { Route as AuthCallbackRouteImport } from './routes/auth.callback'
 import { Route as AppNutritionFoodsRouteImport } from './routes/_app.nutrition_.foods'
 import { Route as AppNutritionHistoryRouteImport } from './routes/_app.nutrition_.history'
 import { Route as AppNutritionLogRouteImport } from './routes/_app.nutrition_.log'
@@ -104,6 +105,11 @@ const AppWorkoutsRoute = AppWorkoutsRouteImport.update({
   path: '/workouts',
   getParentRoute: () => AppRoute,
 } as any)
+const AuthCallbackRoute = AuthCallbackRouteImport.update({
+  id: '/auth/callback',
+  path: '/auth/callback',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AppNutritionFoodsRoute = AppNutritionFoodsRouteImport.update({
   id: '/nutrition_/foods',
   path: '/nutrition/foods',
@@ -174,6 +180,7 @@ export interface FileRoutesByFullPath {
   '/reports': typeof AppReportsRoute
   '/settings': typeof AppSettingsRoute
   '/workouts': typeof AppWorkoutsRouteWithChildren
+  '/auth/callback': typeof AuthCallbackRoute
   '/nutrition/foods': typeof AppNutritionFoodsRoute
   '/nutrition/history': typeof AppNutritionHistoryRoute
   '/nutrition/log': typeof AppNutritionLogRoute
@@ -199,6 +206,7 @@ export interface FileRoutesByTo {
   '/progress': typeof AppProgressRoute
   '/reports': typeof AppReportsRoute
   '/settings': typeof AppSettingsRoute
+  '/auth/callback': typeof AuthCallbackRoute
   '/nutrition/foods': typeof AppNutritionFoodsRoute
   '/nutrition/history': typeof AppNutritionHistoryRoute
   '/nutrition/log': typeof AppNutritionLogRoute
@@ -227,6 +235,7 @@ export interface FileRoutesById {
   '/_app/reports': typeof AppReportsRoute
   '/_app/settings': typeof AppSettingsRoute
   '/_app/workouts': typeof AppWorkoutsRouteWithChildren
+  '/auth/callback': typeof AuthCallbackRoute
   '/_app/nutrition_/foods': typeof AppNutritionFoodsRoute
   '/_app/nutrition_/history': typeof AppNutritionHistoryRoute
   '/_app/nutrition_/log': typeof AppNutritionLogRoute
@@ -255,6 +264,7 @@ export interface FileRouteTypes {
     | '/reports'
     | '/settings'
     | '/workouts'
+    | '/auth/callback'
     | '/nutrition/foods'
     | '/nutrition/history'
     | '/nutrition/log'
@@ -280,6 +290,7 @@ export interface FileRouteTypes {
     | '/progress'
     | '/reports'
     | '/settings'
+    | '/auth/callback'
     | '/nutrition/foods'
     | '/nutrition/history'
     | '/nutrition/log'
@@ -307,6 +318,7 @@ export interface FileRouteTypes {
     | '/_app/reports'
     | '/_app/settings'
     | '/_app/workouts'
+    | '/auth/callback'
     | '/_app/nutrition_/foods'
     | '/_app/nutrition_/history'
     | '/_app/nutrition_/log'
@@ -328,6 +340,7 @@ export interface RootRouteChildren {
   OnboardingRoute: typeof OnboardingRoute
   RegisterRoute: typeof RegisterRoute
   ResetPasswordRoute: typeof ResetPasswordRoute
+  AuthCallbackRoute: typeof AuthCallbackRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -429,6 +442,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/workouts'
       preLoaderRoute: typeof AppWorkoutsRouteImport
       parentRoute: typeof AppRoute
+    }
+    '/auth/callback': {
+      id: '/auth/callback'
+      path: '/auth/callback'
+      fullPath: '/auth/callback'
+      preLoaderRoute: typeof AuthCallbackRouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/_app/nutrition_/foods': {
       id: '/_app/nutrition_/foods'
@@ -572,6 +592,7 @@ const rootRouteChildren: RootRouteChildren = {
   OnboardingRoute: OnboardingRoute,
   RegisterRoute: RegisterRoute,
   ResetPasswordRoute: ResetPasswordRoute,
+  AuthCallbackRoute: AuthCallbackRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
