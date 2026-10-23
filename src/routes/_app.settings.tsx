@@ -125,7 +125,7 @@ export function Settings() {
   const p = profile.data;
   const s = settings.data;
   return (
-    <>
+    <div className="flex min-h-[calc(100svh-12rem)] flex-col md:min-h-0">
       <PageHeader title="Profile & settings" subtitle="Your routine, your preferences." />
       <section className="relative mb-6 overflow-hidden rounded-3xl border bg-card p-5 md:p-7">
         <div className="pointer-events-none absolute -right-16 -top-16 size-60 rounded-full bg-primary/5 blur-3xl" />
@@ -156,7 +156,7 @@ export function Settings() {
             </Button>
             <Button
               variant="outline"
-              className="h-11 rounded-xl border-destructive/20 text-destructive hover:bg-destructive/10 hover:text-destructive"
+              className="hidden h-11 rounded-xl border-destructive/20 text-destructive hover:bg-destructive/10 hover:text-destructive md:inline-flex"
               onClick={() => setLogoutOpen(true)}
             >
               <LogOut className="size-4" />
@@ -208,6 +208,17 @@ export function Settings() {
             <ArrowUpRight className="size-4 shrink-0 text-muted-foreground" />
           </button>
         ))}
+      </div>
+      <div className="mt-auto flex justify-center pt-6 pb-2 md:hidden">
+        <Button
+          type="button"
+          variant="outline"
+          className="h-12 min-w-44 rounded-xl border-destructive text-destructive hover:bg-destructive/10 hover:text-destructive"
+          onClick={() => setLogoutOpen(true)}
+        >
+          <LogOut className="size-4" />
+          Sign out
+        </Button>
       </div>
       <ResponsiveModal
         open={section !== null}
@@ -538,7 +549,6 @@ export function Settings() {
         onConfirm={() => logout.mutate()}
         pending={logout.isPending}
       />
-    </>
+    </div>
   );
 }
-
