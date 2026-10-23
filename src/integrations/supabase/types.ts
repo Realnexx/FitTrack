@@ -14,6 +14,12 @@ export type Database = {
   }
   public: {
     Tables: {
+      bmi_logs: {
+        Row: {id:string;user_id:string;weight_kg:number;height_cm:number;bmi:number;adult_confirmed:boolean;recorded_at:string}
+        Insert: {id?:string;user_id?:string;weight_kg:number;height_cm:number;adult_confirmed?:boolean;recorded_at?:string}
+        Update: {weight_kg?:number;height_cm?:number;adult_confirmed?:boolean}
+        Relationships: []
+      }
       account_deletion_requests: {
         Row: {id:string;user_id:string;requested_at:string;status:string}
         Insert: {id?:string;user_id?:string;requested_at?:string;status?:string}
@@ -760,3 +766,4 @@ export const Constants = {
     Enums: {},
   },
 } as const
+

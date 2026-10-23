@@ -132,3 +132,7 @@ For Google login/signup and linking:
 5. Redeploy, then test Google signup (new users reach onboarding), returning Google login, and connecting a provider from Settings → Connections. Supabase can automatically link identities sharing a verified email; existing users with different provider email addresses should connect from their signed-in Settings.
 
 Settings also stores optional TikTok, Facebook, GitHub, Instagram and X profile links. A profile URL does not grant sign-in access. Photo updates appear in the profile, header and sidebar; removing a custom photo falls back to an available provider photo or initials.
+
+## Saving BMI history
+
+Apply `drizzle/migrations/0005_bmi_history.sql` in the Supabase SQL editor after migrations 0000–0004, then deploy the updated app. Progress → BMI calculator now has a Save BMI button and a BMI history section. Each private snapshot stores its timestamp, height, weight and adult-category confirmation. The database calculates BMI from those saved inputs. Saving does not update profile height or weight logs, and previous unsaved calculator results are not added retroactively.

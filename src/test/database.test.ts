@@ -51,6 +51,7 @@ beforeAll(async () => {
     "0002_account_requests.sql",
     "0003_onboarding_preferences.sql",
     "0004_profile_connections.sql",
+    "0005_bmi_history.sql",
   ])
     await db.exec(
       readFileSync(new URL("../../drizzle/migrations/" + file, import.meta.url), "utf8"),
@@ -339,5 +340,33 @@ describe("avatar storage security", () => {
       tx.query<{ avatar_url: string }>("select avatar_url from profiles where id=$1", [alice]),
     );
     expect(own.rows[0]?.avatar_url).toBe("https://example.com/photo.png");
+  });
+});
+
+describe("private BMI history", () => {
+  it("calculates snapshots in the database and isolates each account", async () => {
+    await asUser(alice, (tx) =>
+      tx.query("insert into bmi_logs(weight_kg,height_cm,adult_confirmed) values (70,175,true)"),
+    );
+    const own = await asUser(alice, (tx) =>
+      tx.query<{ bmi: number; weight_kg: number; height_cm: number }>("select * from bmi_logs"),
+    );
+    expect(own.rows).toHaveLength(1);
+    expect(own.rows[0]?.bmi).toBeCloseTo(22.857142);
+    const other = await asUser(bob, (tx) => tx.query("select * from bmi_logs"));
+    expect(other.rows).toHaveLength(0);
+    await expect(
+      asUser(bob, (tx) =>
+        tx.query("insert into bmi_logs(user_id,weight_kg,height_cm) values ($1,70,175)", [alice]),
+      ),
+    ).rejects.toThrow();
+    await expect(
+      asUser(alice, (tx) => tx.query("insert into bmi_logs(weight_kg,height_cm) values (0,175)")),
+    ).rejects.toThrow();
+    await asUser(alice, (tx) => tx.query("update profiles set height_cm=180 where id=$1", [alice]));
+    const original = await asUser(alice, (tx) =>
+      tx.query<{ height_cm: number }>("select height_cm from bmi_logs"),
+    );
+    expect(original.rows[0]?.height_cm).toBe(175);
   });
 });

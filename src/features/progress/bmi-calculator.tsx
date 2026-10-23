@@ -1,6 +1,9 @@
-import { useState } from "react";
-import { Calculator, ArrowUpRight } from "lucide-react";
-import { useProfile } from "@/lib/data";
+import { BmiHistory } from "./bmi-history";
+import { supabase } from "@/integrations/supabase/client";
+import { ModalActionBar } from "@/components/modal-actions";
+import { useRef, useState } from "react";
+import { Calculator, ArrowUpRight, Save, Loader2 } from "lucide-react";
+import { useProfile, useAction, uid, unwrap } from "@/lib/data";
 import { calculateBmi, bmiCategory } from "@/lib/bmi";
 import { ResponsiveModal } from "@/components/responsive-modal";
 import { Button } from "@/components/ui/button";
@@ -9,6 +12,14 @@ import { Field } from "@/components/fields";
 export function BmiCalculator({ weightKg }: { weightKg: number }) {
   const profile = useProfile();
   const [open, setOpen] = useState(false);
+  const save = useAction(
+    async (entry: BmiEntry) => {
+      if (calculateBmi(entry.weight_kg, entry.height_cm) === null)
+        throw new Error("Enter valid measurements before saving.");
+      unwrap(await supabase.from("bmi_logs").insert({ ...entry, user_id: await uid() }));
+    },
+    { invalidate: [["bmi-history"]], success: "BMI saved to your history" },
+  );
   return (
     <>
       <button
@@ -32,22 +43,39 @@ export function BmiCalculator({ weightKg }: { weightKg: number }) {
         onOpenChange={setOpen}
         title="BMI calculator"
         description="A quick look at your height-to-weight ratio."
-        footer={
-          <Button
-            type="button"
-            className="h-11 w-full rounded-xl sm:w-auto"
-            onClick={() => setOpen(false)}
-          >
-            Done
-          </Button>
-        }
       >
-        {open && <BmiForm weightKg={weightKg} heightCm={profile.data?.height_cm ?? null} />}
+        {open && (
+          <>
+            <BmiForm
+              weightKg={weightKg}
+              heightCm={profile.data?.height_cm ?? null}
+              onSave={async (entry) => {
+                await save.mutateAsync(entry);
+              }}
+              onClose={() => setOpen(false)}
+            />
+            <BmiHistory />
+          </>
+        )}
       </ResponsiveModal>
     </>
   );
 }
-export function BmiForm({ weightKg, heightCm }: { weightKg: number; heightCm: number | null }) {
+type BmiEntry = { weight_kg: number; height_cm: number; adult_confirmed: boolean };
+export function BmiForm({
+  weightKg,
+  heightCm,
+  onSave,
+  onClose,
+}: {
+  weightKg: number;
+  heightCm: number | null;
+  onSave?: (entry: BmiEntry) => Promise<void>;
+  onClose?: () => void;
+}) {
+  const savingRef = useRef(false);
+  const [saving, setSaving] = useState(false);
+  const [saved, setSaved] = useState("");
   const [system, setSystem] = useState("metric");
   const [weight, setWeight] = useState(weightKg > 0 ? String(weightKg) : "");
   const [height, setHeight] = useState(heightCm ? String(heightCm) : "");
@@ -55,6 +83,7 @@ export function BmiForm({ weightKg, heightCm }: { weightKg: number; heightCm: nu
   const kg = Number(weight) / (system === "imperial" ? 2.2046226218 : 1);
   const cm = Number(height) * (system === "imperial" ? 2.54 : 1);
   const bmi = weight.trim() && height.trim() ? calculateBmi(kg, cm) : null;
+  const fingerprint = JSON.stringify([kg, cm, adult]);
   return (
     <div className="space-y-5">
       <div
@@ -181,9 +210,46 @@ export function BmiForm({ weightKg, heightCm }: { weightKg: number; heightCm: nu
         </a>
       </p>
       <p className="text-xs text-muted-foreground">
-        Uses your saved height and most recent weight when available. Changes here do not update
-        your profile or weight log.
+        Save BMI adds a dated snapshot to your BMI history. It does not change your profile or
+        weight log.
       </p>
+      {onSave && (
+        <ModalActionBar>
+          <div className="flex w-full items-center justify-end gap-3">
+            <Button
+              type="button"
+              variant="outline"
+              className="h-11 rounded-xl"
+              onClick={onClose}
+              disabled={saving}
+            >
+              Close
+            </Button>
+            <Button
+              type="button"
+              className="h-11 flex-1 rounded-xl sm:flex-none"
+              disabled={bmi === null || saving || saved === fingerprint}
+              onClick={async () => {
+                if (bmi === null || savingRef.current || saved === fingerprint) return;
+                savingRef.current = true;
+                setSaving(true);
+                try {
+                  await onSave({ weight_kg: kg, height_cm: cm, adult_confirmed: adult });
+                  setSaved(fingerprint);
+                } catch {
+                  /* The save action displays its error and allows retrying. */
+                } finally {
+                  savingRef.current = false;
+                  setSaving(false);
+                }
+              }}
+            >
+              {saving ? <Loader2 className="size-4 animate-spin" /> : <Save className="size-4" />}
+              {saving ? "Saving…" : saved === fingerprint ? "BMI saved" : "Save BMI"}
+            </Button>
+          </div>
+        </ModalActionBar>
+      )}
     </div>
   );
 }

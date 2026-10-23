@@ -123,3 +123,5 @@ Profile connections implementation: photo upload/removal with owner-scoped stora
 BMI calculator: available from Progress as a matching card, desktop modal and mobile drawer. Prefills saved height and latest recorded weight (or onboarding starting weight), supports kg/cm and lb/in, validates measurements and calculates without changing stored records. Adult category interpretation requires age-20-or-older confirmation and links to CDC guidance. No database migration is required.
 
 Appearance: Settings offers Light, Dark and System selections. The preference saves on the current device, applies before initial paint, synchronizes across tabs and follows device appearance changes in System mode. Shared surface, text, button, sidebar, chart and toast colors adapt globally. No database migration is required.
+
+BMI history: Save BMI persists owner-only snapshots, with database-calculated BMI and original height/weight. History displays dates, measurements and applicable adult categories, supports loading older entries, and refreshes after saving. Hosted migration 0005 is required before live saving is available.

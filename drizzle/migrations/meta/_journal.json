@@ -36,6 +36,13 @@
       "when": 1792831000000,
       "tag": "0004_profile_connections",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1792832000000,
+      "tag": "0005_bmi_history",
+      "breakpoints": true
     }
   ]
 }
