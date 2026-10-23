@@ -1,3 +1,4 @@
+import { connectionError } from "@/lib/connection-error";
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -93,9 +94,9 @@ export function AccountConnections({
                           },
                         });
                         if (error) throw error;
-                      } catch {
+                      } catch (failure) {
                         setConnecting("");
-                        setError("This connection is unavailable right now. Try again later.");
+                        setError(connectionError(failure, label));
                       }
                     }}
                   >
@@ -163,3 +164,4 @@ export function AccountConnections({
     </div>
   );
 }
+
