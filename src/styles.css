@@ -186,3 +186,49 @@
 .fittrack-toaster [data-close-button].fittrack-toast-close:hover { background: var(--elevated); color: var(--foreground); }
 .fittrack-toaster .fittrack-toast-action { background: var(--primary); color: var(--primary-foreground); border-radius: 8px; }
 .fittrack-toaster .fittrack-toast-cancel { background: var(--elevated); color: var(--foreground); border-radius: 8px; }
+
+/* Light surfaces use deep emerald accents to keep text and controls readable. */
+:root.light {
+  --background: #f4f7fa;
+  --surface: #edf2f6;
+  --card: #ffffff;
+  --elevated: #e7eef3;
+  --foreground: #122333;
+  --card-foreground: #122333;
+  --popover: #ffffff;
+  --popover-foreground: #122333;
+  --primary: #007747;
+  --primary-hover: #005e38;
+  --primary-foreground: #ffffff;
+  --secondary: #e7eef3;
+  --secondary-foreground: #122333;
+  --muted: #e7eef3;
+  --muted-foreground: #526477;
+  --accent: #dcebe5;
+  --accent-foreground: #122333;
+  --destructive: #bf2439;
+  --destructive-foreground: #ffffff;
+  --info: #006e9b;
+  --warning: #915700;
+  --success: #007747;
+  --border: #cbd6df;
+  --input: #acbdca;
+  --ring: #007747;
+  --chart-1: #007747;
+  --chart-2: #006e9b;
+  --chart-3: #915700;
+  --chart-4: #a13988;
+  --chart-5: #526477;
+  --sidebar: #ffffff;
+  --sidebar-foreground: #122333;
+  --sidebar-primary: #007747;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: #e4f0e9;
+  --sidebar-accent-foreground: #122333;
+  --sidebar-border: #cbd6df;
+  --sidebar-ring: #007747;
+  --shadow-card: 0 2px 16px -8px #12233326;
+  --shadow-glow: 0 10px 40px -12px #00774735;
+}
+html.light { color-scheme: light; }
+html.dark { color-scheme: dark; }

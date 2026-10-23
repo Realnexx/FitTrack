@@ -495,13 +495,13 @@ it("links reported workouts to their read-only history summary", () => {
 
 it("requires confirmation before signing out from settings", async () => {
   show(<SettingsPage />);
-  fireEvent.click(screen.getByRole("button", { name: "Sign out" }));
+  fireEvent.click(screen.getAllByRole("button", { name: "Sign out" })[0]!);
   const dialog = await screen.findByRole("dialog", { name: "Sign out of FitTrack?" });
   expect(state.signOut).not.toHaveBeenCalled();
   fireEvent.click(within(dialog).getByRole("button", { name: "Stay signed in" }));
   await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
   expect(state.signOut).not.toHaveBeenCalled();
-  fireEvent.click(screen.getByRole("button", { name: "Sign out" }));
+  fireEvent.click(screen.getAllByRole("button", { name: "Sign out" })[0]!);
   fireEvent.click(
     within(await screen.findByRole("dialog")).getByRole("button", { name: "Sign out" }),
   );
@@ -557,3 +557,4 @@ it("keeps review selections when going back and shows a spinner during saving", 
   finish({ data: null, error: null });
   await waitFor(() => expect(state.navigate).toHaveBeenCalledWith({ to: "/dashboard" }));
 });
+

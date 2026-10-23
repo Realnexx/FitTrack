@@ -1,10 +1,12 @@
+import { useTheme } from "@/lib/theme";
 import { Toaster as Sonner } from "sonner";
 import { CircleCheck, TriangleAlert, Info, CircleX, Loader2 } from "lucide-react";
 type ToasterProps = React.ComponentProps<typeof Sonner>;
 export function Toaster(props: ToasterProps) {
+  const { resolved } = useTheme();
   return (
     <Sonner
-      theme="dark"
+      theme={resolved}
       position="top-center"
       closeButton
       visibleToasts={3}

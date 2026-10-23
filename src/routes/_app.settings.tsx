@@ -1,3 +1,4 @@
+import { ThemeSelector } from "@/components/theme-selector";
 import { ProfilePhotoEditor } from "@/components/profile-photo-editor";
 import { AccountConnections } from "@/components/account-connections";
 import { DeleteAccountRequest } from "@/components/delete-account-request";
@@ -209,6 +210,7 @@ export function Settings() {
           </button>
         ))}
       </div>
+      <ThemeSelector />
       <div className="mt-auto flex justify-center pt-6 pb-2 md:hidden">
         <Button
           type="button"

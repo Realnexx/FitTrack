@@ -1,3 +1,4 @@
+import { BmiCalculator } from "./bmi-calculator";
 import { weightToDisplay, weightToKg, validateGoal } from "@/lib/measurements";
 import { useSettings } from "@/lib/data";
 import { useDisplayDate } from "@/hooks/use-display-date";
@@ -149,6 +150,7 @@ export function ProgressPage() {
           </Button>
         }
       />
+      <BmiCalculator weightKg={latest} />
       <section className="relative mb-6 overflow-hidden rounded-3xl border bg-card p-6 md:p-8">
         <div className="pointer-events-none absolute -right-20 -top-24 size-80 rounded-full bg-primary/5 blur-3xl" />
         <div className="relative flex flex-col gap-6 sm:flex-row sm:items-center sm:justify-between">
