@@ -1,0 +1,144 @@
+{
+  "banana": {
+    "article": "https://en.wikipedia.org/wiki/Banana",
+    "image": "https://thumb.wikimedia.org/wikipedia/commons/thumb/d/de/Bananavarieties.jpg/330px-Bananavarieties.jpg?utm_source=en.wikipedia.org&utm_campaign=api&utm_content=thumbnail",
+    "Artist": "TimothyPilgrim",
+    "LicenseShortName": "CC BY-SA 3.0",
+    "LicenseUrl": "http://creativecommons.org/licenses/by-sa/3.0/",
+    "AttributionRequired": "true",
+    "file": "https://commons.wikimedia.org/wiki/File:Bananavarieties.jpg"
+  },
+  "bread": {
+    "article": "https://en.wikipedia.org/wiki/Pandesal",
+    "image": "https://thumb.wikimedia.org/wikipedia/commons/thumb/4/48/Pinoy_Pandesal.jpg/330px-Pinoy_Pandesal.jpg?utm_source=en.wikipedia.org&utm_campaign=api&utm_content=thumbnail",
+    "Artist": "Jessartcam",
+    "LicenseShortName": "CC BY-SA 4.0",
+    "LicenseUrl": "https://creativecommons.org/licenses/by-sa/4.0",
+    "AttributionRequired": "true",
+    "file": "https://commons.wikimedia.org/wiki/File:Pinoy_Pandesal.jpg"
+  },
+  "sardines": {
+    "image": "https://thumb.wikimedia.org/wikipedia/commons/thumb/e/ee/16-07-2017_Can_of_Sardines%2C_Alva%2C_Portugal.JPG/330px-16-07-2017_Can_of_Sardines%2C_Alva%2C_Portugal.JPG",
+    "Artist": "Kolforn (Wikimedia)",
+    "LicenseShortName": "CC BY-SA 4.0",
+    "LicenseUrl": "https://creativecommons.org/licenses/by-sa/4.0",
+    "file": "https://commons.wikimedia.org/wiki/File:16-07-2017_Can_of_Sardines%2C_Alva%2C_Portugal.JPG"
+  },
+  "adobo": {
+    "article": "https://commons.wikimedia.org/wiki/File:Chicken_Adobo.jpg",
+    "image": "https://upload.wikimedia.org/wikipedia/commons/thumb/1/14/Chicken_Adobo.jpg/330px-Chicken_Adobo.jpg",
+    "Artist": "Witchy2006 at English Wikipedia",
+    "LicenseShortName": "Public domain",
+    "LicenseUrl": "",
+    "AttributionRequired": "false",
+    "file": "https://commons.wikimedia.org/wiki/File:Chicken_Adobo.jpg"
+  },
+  "chicken": {
+    "article": "https://commons.wikimedia.org/wiki/File:020240103_Boiled_chicken_breast.jpg",
+    "image": "https://upload.wikimedia.org/wikipedia/commons/thumb/5/5a/020240103_Boiled_chicken_breast.jpg/330px-020240103_Boiled_chicken_breast.jpg",
+    "Artist": "Silar",
+    "LicenseShortName": "CC BY-SA 4.0",
+    "LicenseUrl": "https://creativecommons.org/licenses/by-sa/4.0",
+    "AttributionRequired": "true",
+    "file": "https://commons.wikimedia.org/wiki/File:020240103_Boiled_chicken_breast.jpg"
+  },
+  "rice": {
+    "article": "https://en.wikipedia.org/wiki/Cooked_rice",
+    "image": "https://thumb.wikimedia.org/wikipedia/commons/thumb/d/d6/Meshi_001.jpg/330px-Meshi_001.jpg?utm_source=en.wikipedia.org&utm_campaign=api&utm_content=thumbnail",
+    "Artist": "Ocdp",
+    "LicenseShortName": "CC0",
+    "LicenseUrl": "http://creativecommons.org/publicdomain/zero/1.0/deed.en",
+    "AttributionRequired": "false",
+    "file": "https://commons.wikimedia.org/wiki/File:Meshi_001.jpg"
+  },
+  "egg": {
+    "article": "https://en.wikipedia.org/wiki/Boiled_egg",
+    "image": "https://thumb.wikimedia.org/wikipedia/commons/thumb/c/cc/Soft-boiled-egg.jpg/330px-Soft-boiled-egg.jpg?utm_source=en.wikipedia.org&utm_campaign=api&utm_content=thumbnail",
+    "Artist": "Amin",
+    "LicenseShortName": "CC BY-SA 4.0",
+    "LicenseUrl": "https://creativecommons.org/licenses/by-sa/4.0",
+    "AttributionRequired": "true",
+    "file": "https://commons.wikimedia.org/wiki/File:Soft-boiled-egg.jpg"
+  },
+  "milk": {
+    "article": "https://en.wikipedia.org/wiki/Milk",
+    "image": "https://thumb.wikimedia.org/wikipedia/commons/thumb/a/a5/Glass_of_Milk_%2833657535532%29.jpg/330px-Glass_of_Milk_%2833657535532%29.jpg?utm_source=en.wikipedia.org&utm_campaign=api&utm_content=thumbnail",
+    "Artist": "NIAID",
+    "LicenseShortName": "CC BY 2.0",
+    "LicenseUrl": "https://creativecommons.org/licenses/by/2.0",
+    "AttributionRequired": "true",
+    "file": "https://commons.wikimedia.org/wiki/File:Glass_of_Milk_%2833657535532%29.jpg"
+  },
+  "vegetables": {
+    "article": "https://commons.wikimedia.org/wiki/File:Steamed_vegetables_CM.jpg",
+    "image": "https://upload.wikimedia.org/wikipedia/commons/thumb/e/e4/Steamed_vegetables_CM.jpg/330px-Steamed_vegetables_CM.jpg",
+    "Artist": "Takeaway",
+    "LicenseShortName": "CC BY-SA 3.0",
+    "LicenseUrl": "https://creativecommons.org/licenses/by-sa/3.0",
+    "AttributionRequired": "true",
+    "file": "https://commons.wikimedia.org/wiki/File:Steamed_vegetables_CM.jpg"
+  },
+  "monggo": {
+    "article": "https://en.wikipedia.org/wiki/Ginisang_munggo",
+    "image": "https://thumb.wikimedia.org/wikipedia/commons/thumb/b/b0/Monggojf.JPG/330px-Monggojf.JPG?utm_source=en.wikipedia.org&utm_campaign=api&utm_content=thumbnail",
+    "Artist": "Ramon FVelasquez",
+    "LicenseShortName": "CC BY-SA 3.0",
+    "LicenseUrl": "https://creativecommons.org/licenses/by-sa/3.0",
+    "AttributionRequired": "true",
+    "file": "https://commons.wikimedia.org/wiki/File:Monggojf.JPG"
+  },
+  "oatmeal": {
+    "article": "https://en.wikipedia.org/wiki/Oatmeal",
+    "image": "https://thumb.wikimedia.org/wikipedia/commons/thumb/3/39/Oatmeal.jpg/330px-Oatmeal.jpg?utm_source=en.wikipedia.org&utm_campaign=api&utm_content=thumbnail",
+    "Artist": "Bill Ebbesen",
+    "LicenseShortName": "Copyrighted free use",
+    "LicenseUrl": "",
+    "file": "https://commons.wikimedia.org/wiki/File:Oatmeal.jpg"
+  },
+  "peanut-butter": {
+    "article": "https://en.wikipedia.org/wiki/Peanut_butter",
+    "image": "https://thumb.wikimedia.org/wikipedia/commons/thumb/1/11/2020-03-24_20_57_22_An_open_jar_of_Skippy_Creamy_Peanut_Butter_in_the_Dulles_section_of_Sterling%2C_Loudoun_County%2C_Virginia.jpg/330px-2020-03-24_20_57_22_An_open_jar_of_Skippy_Creamy_Peanut_Butter_in_the_Dulles_section_of_Sterling%2C_Loudoun_County%2C_Virginia.jpg?utm_source=en.wikipedia.org&utm_campaign=api&utm_content=thumbnail",
+    "Artist": "Famartin",
+    "LicenseShortName": "CC BY-SA 4.0",
+    "LicenseUrl": "https://creativecommons.org/licenses/by-sa/4.0",
+    "AttributionRequired": "true",
+    "file": "https://commons.wikimedia.org/wiki/File:2020-03-24_20_57_22_An_open_jar_of_Skippy_Creamy_Peanut_Butter_in_the_Dulles_section_of_Sterling%2C_Loudoun_County%2C_Virginia.jpg"
+  },
+  "peanuts": {
+    "image": "https://thumb.wikimedia.org/wikipedia/commons/thumb/a/a4/Roasted_peanuts.jpg/330px-Roasted_peanuts.jpg",
+    "Artist": "Vis M",
+    "LicenseShortName": "CC BY-SA 4.0",
+    "LicenseUrl": "https://creativecommons.org/licenses/by-sa/4.0",
+    "file": "https://commons.wikimedia.org/wiki/File:Roasted_peanuts.jpg"
+  },
+  "sweet-potato": {
+    "article": "https://en.wikipedia.org/wiki/Sweet_potato",
+    "image": "https://thumb.wikimedia.org/wikipedia/commons/thumb/5/58/Ipomoea_batatas_006.JPG/330px-Ipomoea_batatas_006.JPG?utm_source=en.wikipedia.org&utm_campaign=api&utm_content=thumbnail",
+    "Artist": "Llez",
+    "LicenseShortName": "CC BY-SA 3.0",
+    "LicenseUrl": "https://creativecommons.org/licenses/by-sa/3.0",
+    "file": "https://commons.wikimedia.org/wiki/File:Ipomoea_batatas_006.JPG"
+  },
+  "tilapia": {
+    "image": "https://thumb.wikimedia.org/wikipedia/commons/thumb/f/f7/TILAPIA.jpg/330px-TILAPIA.jpg",
+    "Artist": "Mahamuda kamal",
+    "LicenseShortName": "CC BY 4.0",
+    "LicenseUrl": "https://creativecommons.org/licenses/by/4.0",
+    "file": "https://commons.wikimedia.org/wiki/File:TILAPIA.jpg"
+  },
+  "tofu": {
+    "article": "https://en.wikipedia.org/wiki/Tofu",
+    "image": "https://thumb.wikimedia.org/wikipedia/commons/thumb/0/03/Japanese_SilkyTofu_%28Kinugoshi_Tofu%29.JPG/330px-Japanese_SilkyTofu_%28Kinugoshi_Tofu%29.JPG?utm_source=en.wikipedia.org&utm_campaign=api&utm_content=thumbnail",
+    "Artist": "DryPot",
+    "LicenseShortName": "CC BY-SA 3.0",
+    "LicenseUrl": "http://creativecommons.org/licenses/by-sa/3.0/",
+    "file": "https://commons.wikimedia.org/wiki/File:Japanese_SilkyTofu_%28Kinugoshi_Tofu%29.JPG"
+  },
+  "tuna": {
+    "image": "https://thumb.wikimedia.org/wikipedia/commons/thumb/0/04/Kooddoo_canned_tuna.jpeg/330px-Kooddoo_canned_tuna.jpeg",
+    "Artist": "User:CRC43",
+    "LicenseShortName": "CC BY-SA 3.0",
+    "LicenseUrl": "https://creativecommons.org/licenses/by-sa/3.0",
+    "file": "https://commons.wikimedia.org/wiki/File:Kooddoo_canned_tuna.jpeg"
+  }
+}

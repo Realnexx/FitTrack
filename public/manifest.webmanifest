@@ -1,0 +1,14 @@
+{
+  "name": "FitTrack",
+  "short_name": "FitTrack",
+  "description": "Track weight gain, dumbbell workouts and nutrition.",
+  "start_url": "/dashboard",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#07111F",
+  "theme_color": "#07111F",
+  "icons": [
+    { "src": "/icons/icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "/icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
+  ]
+}
