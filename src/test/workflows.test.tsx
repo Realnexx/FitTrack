@@ -264,6 +264,8 @@ describe("Core MVP interactions", () => {
       ],
     };
     show(<WorkoutSession id="session" />);
+    expect(screen.queryByLabelText("Duration (seconds)")).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Open Plank" }));
     fireEvent.change(screen.getByLabelText("Duration (seconds)"), { target: { value: "40" } });
     fireEvent.click(screen.getByRole("button", { name: "Complete set" }));
     await waitFor(() =>
@@ -557,4 +559,3 @@ it("keeps review selections when going back and shows a spinner during saving", 
   finish({ data: null, error: null });
   await waitFor(() => expect(state.navigate).toHaveBeenCalledWith({ to: "/dashboard" }));
 });
-

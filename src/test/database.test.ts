@@ -370,3 +370,20 @@ describe("private BMI history", () => {
     expect(original.rows[0]?.height_cm).toBe(175);
   });
 });
+
+it("keeps the saved schedule unchanged when an invalid or foreign plan is submitted", async () => {
+  const plan = await asUser(alice, (tx) =>
+    tx.query<{ id: string }>("select id from workout_plans limit 1"),
+  );
+  const before = await asUser(alice, (tx) =>
+    tx.query("select * from workout_schedule order by id"),
+  );
+  await expect(
+    asUser(alice, (tx) => tx.query("select set_workout_day($1,7,'all')", [plan.rows[0]!.id])),
+  ).rejects.toThrow();
+  await expect(
+    asUser(bob, (tx) => tx.query("select set_workout_day($1,1,'all')", [plan.rows[0]!.id])),
+  ).rejects.toThrow();
+  const after = await asUser(alice, (tx) => tx.query("select * from workout_schedule order by id"));
+  expect(after.rows).toEqual(before.rows);
+});

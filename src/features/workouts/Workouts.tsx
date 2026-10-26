@@ -1,3 +1,4 @@
+import { ScheduleEditor } from "./schedule-editor";
 import { Link, useNavigate } from "@tanstack/react-router";
 import { useId, useState } from "react";
 import {
@@ -26,7 +27,7 @@ import {
 import { DAY_NAMES, todayISO, fmtDuration, parseISODate, shiftISO } from "@/lib/dates";
 import { scheduledPlanFor } from "@/lib/calc";
 import { PageHeader, Panel, LoadingBlock, ErrorBlock, ConfirmDialog } from "@/components/common";
-import { Field, selectClass, values } from "@/components/fields";
+import { Field, values } from "@/components/fields";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { ExerciseLibrary } from "@/components/exercise-guide";
@@ -49,6 +50,7 @@ export function Workouts() {
     "details" | "edit" | "create" | "schedule" | "history" | null
   >(null);
   const [historyId, setHistoryId] = useState("");
+  const [removingDay, setRemovingDay] = useState<string | null>(null);
   const navigate = useNavigate();
   const create = useAction(
     async (form: HTMLFormElement) => {
@@ -105,6 +107,14 @@ export function Workouts() {
   const saveSchedule = useAction(
     async (form: HTMLFormElement) => {
       const v = values(form);
+      if (
+        !plans.data?.some((plan) => plan.id === v.text("plan")) ||
+        !Number.isInteger(v.num("day")) ||
+        v.num("day") < 0 ||
+        v.num("day") > 6 ||
+        !["all", "odd", "even"].includes(v.text("parity"))
+      )
+        throw new Error("Choose a valid day, routine and week pattern.");
       unwrap(
         await supabase.rpc("set_workout_day", {
           plan_id: v.text("plan"),
@@ -117,7 +127,11 @@ export function Workouts() {
   );
   const deleteSchedule = useAction(
     async (id: string) => unwrap(await supabase.from("workout_schedule").delete().eq("id", id)),
-    { invalidate: [qk.schedule], success: "Scheduled day removed" },
+    {
+      invalidate: [qk.schedule],
+      success: "Scheduled day removed",
+      onSuccess: () => setRemovingDay(null),
+    },
   );
   const queries = [plans, exercises, schedule, sessions, active];
   if (queries.some((q) => q.isPending)) return <LoadingBlock />;
@@ -446,70 +460,14 @@ export function Workouts() {
           </form>
         )}
         {overlay === "schedule" && (
-          <div className="space-y-6">
-            <div className="space-y-2">
-              {[...(schedule.data ?? [])]
-                .sort((a, b) => a.day_of_week - b.day_of_week)
-                .map((s) => (
-                  <div
-                    key={s.id}
-                    className="flex items-center justify-between gap-3 rounded-xl border p-3"
-                  >
-                    <div>
-                      <p className="text-sm font-medium">
-                        {DAY_NAMES[s.day_of_week]} ·{" "}
-                        {plans.data?.find((p) => p.id === s.workout_plan_id)?.name}
-                      </p>
-                      <p className="mt-1 text-xs text-muted-foreground">
-                        {s.week_parity === "all" ? "Every week" : `${s.week_parity} ISO weeks`}
-                      </p>
-                    </div>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      disabled={deleteSchedule.isPending}
-                      onClick={() => deleteSchedule.mutate(s.id)}
-                    >
-                      Remove
-                    </Button>
-                  </div>
-                ))}
-            </div>
-            <form
-              id={scheduleFormId}
-              className="grid gap-4 sm:grid-cols-2"
-              onSubmit={(e) => {
-                e.preventDefault();
-                saveSchedule.mutate(e.currentTarget);
-              }}
-            >
-              <Field label="Day">
-                <select name="day" className={selectClass}>
-                  {DAY_NAMES.map((d, i) => (
-                    <option value={i} key={d}>
-                      {d}
-                    </option>
-                  ))}
-                </select>
-              </Field>
-              <Field label="Plan">
-                <select name="plan" className={selectClass} required>
-                  {plans.data?.map((p) => (
-                    <option value={p.id} key={p.id}>
-                      {p.name}
-                    </option>
-                  ))}
-                </select>
-              </Field>
-              <Field label="Week">
-                <select name="parity" className={selectClass}>
-                  <option value="all">Every week</option>
-                  <option value="odd">Odd ISO weeks</option>
-                  <option value="even">Even ISO weeks</option>
-                </select>
-              </Field>
-            </form>
-          </div>
+          <ScheduleEditor
+            formId={scheduleFormId}
+            plans={plans.data ?? []}
+            rows={schedule.data ?? []}
+            pending={saveSchedule.isPending || deleteSchedule.isPending}
+            onSave={(form) => saveSchedule.mutate(form)}
+            onRemove={(id) => setRemovingDay(id)}
+          />
         )}
         {overlay === "create" && (
           <ModalActionBar>
@@ -528,7 +486,7 @@ export function Workouts() {
             <ModalFormActions
               form={scheduleFormId}
               onCancel={() => setOverlay(null)}
-              pending={saveSchedule.isPending}
+              pending={saveSchedule.isPending || deleteSchedule.isPending}
               disabled={!plans.data?.length}
               label="Save scheduled day"
               hint="Build a routine that fits your week."
@@ -536,6 +494,18 @@ export function Workouts() {
           </ModalActionBar>
         )}
       </ResponsiveModal>
+      <ConfirmDialog
+        open={removingDay !== null}
+        onOpenChange={(open) => {
+          if (!open) setRemovingDay(null);
+        }}
+        title="Remove scheduled routine?"
+        body="This removes this day and week assignment. Your workout plan and recorded sessions stay saved."
+        confirmLabel="Remove routine"
+        onConfirm={() => {
+          if (removingDay && !deleteSchedule.isPending) deleteSchedule.mutate(removingDay);
+        }}
+      />
       <ConfirmDialog
         open={!!deleting}
         onOpenChange={(o) => !o && setDeleting(null)}

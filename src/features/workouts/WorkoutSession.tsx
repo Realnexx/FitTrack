@@ -1,6 +1,10 @@
+import { SessionExerciseCards } from "./session-exercise-cards";
+import { ResponsiveModal } from "@/components/responsive-modal";
+import { ModalActionBar, ModalFormActions } from "@/components/modal-actions";
+import { getExerciseGuide } from "@/lib/exercise-guides";
 import { ExerciseGuideTrigger } from "@/components/exercise-guide";
 import { Link } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import {
   useSession,
@@ -18,6 +22,9 @@ import { Field, NumberField, selectClass, values } from "@/components/fields";
 import { Button } from "@/components/ui/button";
 export function WorkoutSession({ id }: { id: string }) {
   const query = useSession(id);
+  const formId = useId();
+  const saving = useRef(false);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
   const [now, setNow] = useState(Date.now());
   const [deadline, setDeadline] = useState<number | null>(null);
   const [paused, setPaused] = useState<number | null>(null);
@@ -66,6 +73,8 @@ export function WorkoutSession({ id }: { id: string }) {
   const save = useAction(
     async ({ exercise, form }: { exercise: SessionExercise; form: HTMLFormElement }) => {
       const v = values(form);
+      if (query.data?.session.status !== "in_progress")
+        throw new Error("This workout is no longer active.");
       const currentEdit = editing?.workout_session_exercise_id === exercise.id ? editing : null;
       const record = {
         user_id: await uid(),
@@ -143,7 +152,7 @@ export function WorkoutSession({ id }: { id: string }) {
           </Button>
         }
       />
-      <div className="sticky top-0 z-10 mb-6 flex flex-wrap items-center justify-between gap-4 rounded-xl border bg-card p-4">
+      <div className="mb-5 flex flex-wrap items-center justify-between gap-4 rounded-2xl border bg-card p-5">
         <p>
           Session <strong className="tabular-nums">{fmtDuration(duration)}</strong> ·{" "}
           {exercises.reduce((s, e) => s + e.sets.length, 0)} sets ·{" "}
@@ -165,193 +174,268 @@ export function WorkoutSession({ id }: { id: string }) {
           </div>
         )}
       </div>
-      <div className="space-y-5">
-        {exercises.map((e, i) => (
-          <Panel id={`exercise-${e.id}`} key={e.id} title={`${i + 1}. ${e.exercise.name}`}>
-            <p className="mb-3 text-sm text-muted-foreground">
-              {e.target_sets} sets ×{" "}
-              {e.exercise.tracking_type === "time"
-                ? `${e.target_duration_seconds} seconds`
-                : `${e.target_reps_min}–${e.target_reps_max} reps`}{" "}
-              · {e.rest_seconds}s rest · {e.status}
-            </p>
-            <div className="mb-4">
-              <ExerciseGuideTrigger name={e.exercise.name} instructions={e.exercise.instructions} />
+      <SessionExerciseCards
+        exercises={exercises}
+        onOpen={(exerciseId) => {
+          setEditing(null);
+          setSelectedId(exerciseId);
+        }}
+      />
+      <ResponsiveModal
+        open={selectedId !== null}
+        onOpenChange={(open) => {
+          if (!open && !save.isPending) {
+            setSelectedId(null);
+            setEditing(null);
+          }
+        }}
+        title={exercises.find((e) => e.id === selectedId)?.exercise.name ?? "Exercise recorder"}
+        description="Record one set at a time. Saved sets stay with your workout."
+      >
+        {running && (deadline !== null || paused !== null) && (
+          <div className="mb-5 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-primary/25 bg-primary/5 p-4">
+            <div>
+              <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">
+                Recovery time
+              </p>
+              <p className="mt-1 font-display text-xl font-semibold tabular-nums">
+                {restSeconds > 0 ? fmtDuration(restSeconds) : "Rest complete"}
+              </p>
             </div>
-            <div className="mb-4 space-y-2">
-              {e.sets.map((s) => (
-                <div
-                  key={s.id}
-                  className="flex flex-wrap items-center justify-between gap-2 rounded-lg bg-elevated p-3 text-sm"
-                >
-                  <span>
-                    Set {s.set_number}:{" "}
-                    {s.duration_seconds !== null
-                      ? `${s.duration_seconds}s`
-                      : `${s.repetitions} reps × ${s.weight_kg ?? 0} kg (${s.weight_basis.replaceAll("_", " ")})`}
-                    {s.side ? ` · ${s.side}` : ""}
-                  </span>
-                  {running && (
-                    <div className="flex gap-2">
-                      <Button variant="ghost" size="sm" onClick={() => setEditing(s)}>
-                        Edit
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        disabled={remove.isPending}
-                        onClick={() => remove.mutate(s.id)}
-                      >
-                        Delete
-                      </Button>
-                    </div>
-                  )}
+            <Button type="button" variant="outline" className="rounded-xl" onClick={toggleRest}>
+              {paused !== null ? "Resume rest" : "Pause rest"}
+            </Button>
+          </div>
+        )}
+        <div className="space-y-5">
+          {exercises.map((e, i) =>
+            e.id === selectedId ? (
+              <Panel id={`exercise-${e.id}`} key={e.id} title={`${i + 1}. ${e.exercise.name}`}>
+                <p className="mb-3 text-sm text-muted-foreground">
+                  {e.target_sets} sets ×{" "}
+                  {e.exercise.tracking_type === "time"
+                    ? `${e.target_duration_seconds} seconds`
+                    : `${e.target_reps_min}–${e.target_reps_max} reps`}{" "}
+                  · {e.rest_seconds}s rest · {e.status}
+                </p>
+                {getExerciseGuide(e.exercise.name) && (
+                  <img
+                    src={`/exercises/${getExerciseGuide(e.exercise.name)!.slug}-0.${getExerciseGuide(e.exercise.name)!.extension}`}
+                    alt={`${e.exercise.name} setup`}
+                    className="mb-4 aspect-video w-full rounded-2xl border object-contain bg-elevated"
+                  />
+                )}
+                <div className="mb-4">
+                  <ExerciseGuideTrigger
+                    name={e.exercise.name}
+                    instructions={e.exercise.instructions}
+                  />
                 </div>
-              ))}
-            </div>
-            {running &&
-              (e.status === "pending" || editing?.workout_session_exercise_id === e.id) && (
-                <form
-                  key={
-                    editing?.workout_session_exercise_id === e.id
-                      ? editing.id
-                      : `new-${e.sets.length}`
-                  }
-                  className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4"
-                  onSubmit={(ev) => {
-                    ev.preventDefault();
-                    save.mutate({ exercise: e, form: ev.currentTarget });
-                  }}
-                >
-                  {e.exercise.tracking_type === "time" ? (
-                    <NumberField
-                      label="Duration (seconds)"
-                      name="duration"
-                      min={1}
-                      max={86400}
-                      step="1"
-                      value={
+                <div className="mb-4 space-y-2">
+                  {e.sets.map((s) => (
+                    <div
+                      key={s.id}
+                      className="flex flex-wrap items-center justify-between gap-2 rounded-lg bg-elevated p-3 text-sm"
+                    >
+                      <span>
+                        Set {s.set_number}:{" "}
+                        {s.duration_seconds !== null
+                          ? `${s.duration_seconds}s`
+                          : `${s.repetitions} reps × ${s.weight_kg ?? 0} kg (${s.weight_basis.replaceAll("_", " ")})`}
+                        {s.side ? ` · ${s.side}` : ""}
+                      </span>
+                      {running && (
+                        <div className="flex gap-2">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            disabled={save.isPending}
+                            onClick={() => setEditing(s)}
+                          >
+                            Edit
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            disabled={remove.isPending || save.isPending}
+                            onClick={() => remove.mutate(s.id)}
+                          >
+                            Delete
+                          </Button>
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+                {running &&
+                  (e.status === "pending" || editing?.workout_session_exercise_id === e.id) && (
+                    <form
+                      id={formId}
+                      key={
                         editing?.workout_session_exercise_id === e.id
-                          ? (editing.duration_seconds ?? 30)
-                          : (e.target_duration_seconds ?? 30)
+                          ? editing.id
+                          : `new-${e.sets.length}`
                       }
-                    />
-                  ) : (
-                    <>
-                      <NumberField
-                        label="Actual repetitions"
-                        name="reps"
-                        min={1}
-                        max={1000}
-                        step="1"
-                        value={
-                          editing?.workout_session_exercise_id === e.id
-                            ? (editing.repetitions ?? 10)
-                            : (e.target_reps_min ?? 10)
-                        }
-                      />
-                      <NumberField
-                        label="Weight (kg)"
-                        name="weight"
-                        min={0}
-                        max={999}
-                        value={
-                          editing?.workout_session_exercise_id === e.id
-                            ? (editing.weight_kg ?? 0)
-                            : (e.sets.at(-1)?.weight_kg ?? 0)
-                        }
-                      />
-                      <Field label="Weight means">
-                        <select
-                          className={selectClass}
-                          name="basis"
-                          defaultValue={
+                      className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4"
+                      onSubmit={(ev) => {
+                        ev.preventDefault();
+                        if (saving.current) return;
+                        saving.current = true;
+                        save.mutate(
+                          { exercise: e, form: ev.currentTarget },
+                          {
+                            onSettled: () => {
+                              saving.current = false;
+                            },
+                          },
+                        );
+                      }}
+                    >
+                      {e.exercise.tracking_type === "time" ? (
+                        <NumberField
+                          label="Duration (seconds)"
+                          name="duration"
+                          min={1}
+                          max={86400}
+                          step="1"
+                          value={
                             editing?.workout_session_exercise_id === e.id
-                              ? editing.weight_basis
-                              : e.exercise.is_unilateral
-                                ? "combined"
-                                : "per_dumbbell"
+                              ? (editing.duration_seconds ?? 30)
+                              : (e.target_duration_seconds ?? 30)
                           }
-                        >
-                          <option value="per_dumbbell">Per dumbbell (two used)</option>
-                          <option value="combined">Total load (or single dumbbell)</option>
-                          <option value="bodyweight">Bodyweight</option>
-                        </select>
-                      </Field>
-                    </>
+                        />
+                      ) : (
+                        <>
+                          <NumberField
+                            label="Actual repetitions"
+                            name="reps"
+                            min={1}
+                            max={1000}
+                            step="1"
+                            value={
+                              editing?.workout_session_exercise_id === e.id
+                                ? (editing.repetitions ?? 10)
+                                : (e.target_reps_min ?? 10)
+                            }
+                          />
+                          <NumberField
+                            label="Weight (kg)"
+                            name="weight"
+                            min={0}
+                            max={999}
+                            value={
+                              editing?.workout_session_exercise_id === e.id
+                                ? (editing.weight_kg ?? 0)
+                                : (e.sets.at(-1)?.weight_kg ?? 0)
+                            }
+                          />
+                          <Field label="Weight means">
+                            <select
+                              className={selectClass}
+                              name="basis"
+                              defaultValue={
+                                editing?.workout_session_exercise_id === e.id
+                                  ? editing.weight_basis
+                                  : e.exercise.is_unilateral
+                                    ? "combined"
+                                    : "per_dumbbell"
+                              }
+                            >
+                              <option value="per_dumbbell">Per dumbbell (two used)</option>
+                              <option value="combined">Total load (or single dumbbell)</option>
+                              <option value="bodyweight">Bodyweight</option>
+                            </select>
+                          </Field>
+                        </>
+                      )}
+                      {e.exercise.is_unilateral && (
+                        <Field label="Side">
+                          <select
+                            className={selectClass}
+                            name="side"
+                            defaultValue={
+                              editing?.workout_session_exercise_id === e.id
+                                ? (editing.side ?? "both")
+                                : "both"
+                            }
+                          >
+                            <option value="left">Left</option>
+                            <option value="right">Right</option>
+                            <option value="both">Both (total repetitions)</option>
+                          </select>
+                        </Field>
+                      )}
+                      <ModalActionBar>
+                        <ModalFormActions
+                          form={formId}
+                          pending={save.isPending}
+                          label={
+                            editing?.workout_session_exercise_id === e.id
+                              ? "Update set"
+                              : "Complete set"
+                          }
+                          pendingLabel="Saving set…"
+                          onCancel={() => {
+                            setEditing(null);
+                            setSelectedId(null);
+                          }}
+                          hint={`${e.sets.length} of ${e.target_sets} sets recorded · Rest ${fmtDuration(restSeconds)}`}
+                        />
+                      </ModalActionBar>
+                    </form>
                   )}
-                  {e.exercise.is_unilateral && (
-                    <Field label="Side">
-                      <select
-                        className={selectClass}
-                        name="side"
-                        defaultValue={
-                          editing?.workout_session_exercise_id === e.id
-                            ? (editing.side ?? "both")
-                            : "both"
-                        }
+                {running && (
+                  <div className="mt-4 flex flex-wrap gap-2">
+                    {i < exercises.length - 1 && (
+                      <Button
+                        variant="outline"
+                        disabled={save.isPending}
+                        onClick={() => {
+                          setEditing(null);
+                          setSelectedId(exercises[i + 1]!.id);
+                        }}
                       >
-                        <option value="left">Left</option>
-                        <option value="right">Right</option>
-                        <option value="both">Both (total repetitions)</option>
-                      </select>
-                    </Field>
-                  )}
-                  <Button className="self-end" disabled={save.isPending}>
-                    {editing?.workout_session_exercise_id === e.id ? "Update set" : "Complete set"}
-                  </Button>
-                </form>
-              )}
-            {running && (
-              <div className="mt-4 flex flex-wrap gap-2">
-                {i < exercises.length - 1 && (
-                  <Button
-                    variant="outline"
-                    onClick={() =>
-                      document
-                        .getElementById("exercise-" + exercises[i + 1]!.id)
-                        ?.scrollIntoView({ behavior: "smooth", block: "start" })
-                    }
-                  >
-                    Next exercise
-                  </Button>
+                        Next exercise
+                      </Button>
+                    )}
+                    {e.status === "pending" ? (
+                      <>
+                        <Button
+                          variant="outline"
+                          disabled={status.isPending || save.isPending || !e.sets.length}
+                          onClick={() => status.mutate({ exercise: e.id, state: "completed" })}
+                        >
+                          Mark exercise complete
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          disabled={status.isPending || save.isPending}
+                          onClick={() => status.mutate({ exercise: e.id, state: "skipped" })}
+                        >
+                          Skip exercise
+                        </Button>
+                      </>
+                    ) : (
+                      <Button
+                        variant="outline"
+                        disabled={status.isPending || save.isPending}
+                        onClick={() => status.mutate({ exercise: e.id, state: "pending" })}
+                      >
+                        Reopen exercise
+                      </Button>
+                    )}
+                    {editing?.workout_session_exercise_id === e.id && (
+                      <Button variant="ghost" onClick={() => setEditing(null)}>
+                        Cancel edit
+                      </Button>
+                    )}
+                  </div>
                 )}
-                {e.status === "pending" ? (
-                  <>
-                    <Button
-                      variant="outline"
-                      disabled={status.isPending || !e.sets.length}
-                      onClick={() => status.mutate({ exercise: e.id, state: "completed" })}
-                    >
-                      Mark exercise complete
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      disabled={status.isPending}
-                      onClick={() => status.mutate({ exercise: e.id, state: "skipped" })}
-                    >
-                      Skip exercise
-                    </Button>
-                  </>
-                ) : (
-                  <Button
-                    variant="outline"
-                    disabled={status.isPending}
-                    onClick={() => status.mutate({ exercise: e.id, state: "pending" })}
-                  >
-                    Reopen exercise
-                  </Button>
-                )}
-                {editing?.workout_session_exercise_id === e.id && (
-                  <Button variant="ghost" onClick={() => setEditing(null)}>
-                    Cancel edit
-                  </Button>
-                )}
-              </div>
-            )}
-          </Panel>
-        ))}
-      </div>
+              </Panel>
+            ) : null,
+          )}
+        </div>
+      </ResponsiveModal>
       {running && (
         <div className="mt-6 flex gap-3">
           <Button disabled={finish.isPending} onClick={() => setConfirm("completed")}>
