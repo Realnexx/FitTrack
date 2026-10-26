@@ -1,3 +1,4 @@
+import { supabaseServerConfig } from "@/integrations/supabase/server-config";
 import { createClient } from "@supabase/supabase-js";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import {
@@ -11,6 +12,7 @@ const headers = { "Content-Type": "application/json", "Cache-Control": "no-store
 const reply = (body: unknown, status = 200) =>
   new Response(JSON.stringify(body), { status, headers });
 export function scanConfig(env: Record<string, string | undefined>) {
+  const backend = supabaseServerConfig(env);
   const names = [
     "MEAL_SCAN_DAILY_LIMIT",
     "MEAL_SCAN_USER_DAILY_LIMIT",
@@ -23,9 +25,9 @@ export function scanConfig(env: Record<string, string | undefined>) {
     env["MEAL_SCAN_FREE_TIER_CONFIRMED"] === "true" &&
     env["MEAL_SCAN_ELIGIBILITY_CONFIRMED"] === "true" &&
     Boolean(env["GEMINI_API_KEY"]) &&
-    Boolean(env["SUPABASE_SERVICE_ROLE_KEY"]) &&
-    Boolean(env["SUPABASE_URL"]) &&
-    Boolean(env["SUPABASE_PUBLISHABLE_KEY"]);
+    Boolean(backend.serviceKey) &&
+    Boolean(backend.url) &&
+    Boolean(backend.publicKey);
   if (
     !configured ||
     !values.every(Number.isInteger) ||
@@ -146,6 +148,7 @@ export async function handleMealScan(request: Request): Promise<Response> {
   if (!["GET", "POST"].includes(request.method))
     return reply({ message: "Method not allowed" }, 405);
   const config = scanConfig(process.env);
+  const backend = supabaseServerConfig(process.env);
   if (!config)
     return reply(
       {
@@ -162,7 +165,7 @@ export async function handleMealScan(request: Request): Promise<Response> {
   const authorization = request.headers.get("authorization") ?? "";
   if (!/^Bearer \S+$/.test(authorization))
     return reply({ message: "Sign in before scanning a meal." }, 401);
-  if (scannerProjectMismatch(authorization.slice(7), process.env["SUPABASE_URL"]!))
+  if (scannerProjectMismatch(authorization.slice(7), backend.url!))
     return reply(
       {
         code: "SCANNER_PROJECT_MISMATCH",
@@ -172,8 +175,8 @@ export async function handleMealScan(request: Request): Promise<Response> {
       503,
     );
   const userClient = createClient(
-    process.env["SUPABASE_URL"]!,
-    process.env["SUPABASE_PUBLISHABLE_KEY"]!,
+    backend.url!,
+    backend.publicKey!,
     {
       global: { headers: { Authorization: authorization } },
       auth: { persistSession: false, autoRefreshToken: false },
