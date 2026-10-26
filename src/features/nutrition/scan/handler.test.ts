@@ -1,6 +1,12 @@
 // @vitest-environment node
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
-const state = vi.hoisted(() => ({ rpc: vi.fn(), update: vi.fn(), eq: vi.fn(), adult: true }));
+const state = vi.hoisted(() => ({
+  rpc: vi.fn(),
+  update: vi.fn(),
+  eq: vi.fn(),
+  adult: true,
+  getUser: vi.fn(),
+}));
 vi.mock("@/integrations/supabase/client.server", () => ({
   supabaseAdmin: {
     rpc: state.rpc,
@@ -10,7 +16,7 @@ vi.mock("@/integrations/supabase/client.server", () => ({
 }));
 vi.mock("@supabase/supabase-js", () => ({
   createClient: () => ({
-    auth: { getUser: async () => ({ data: { user: { id: "owner" } }, error: null }) },
+    auth: { getUser: state.getUser },
     from: (table: string) => ({
       select: () =>
         table === "profiles"
@@ -26,7 +32,13 @@ vi.mock("@supabase/supabase-js", () => ({
     }),
   }),
 }));
-import { handleMealScan, scanConfig, validJpeg, libraryMatches } from "./handler.server";
+import {
+  handleMealScan,
+  scanConfig,
+  validJpeg,
+  libraryMatches,
+  scannerProjectMismatch,
+} from "./handler.server";
 import { resizePortion, scanResultSchema } from "./types";
 const id = "11111111-1111-4111-8111-111111111111";
 function photo() {
@@ -58,6 +70,7 @@ beforeEach(() => {
   vi.stubEnv("MEAL_SCAN_RPM_LIMIT", "2");
   vi.stubEnv("MEAL_SCAN_TPM_LIMIT", "20480");
   state.adult = true;
+  state.getUser.mockResolvedValue({ data: { user: { id: "owner" } }, error: null });
   state.rpc.mockReset();
   state.update.mockReset();
   state.eq.mockReset();
@@ -183,4 +196,48 @@ it("validates a successful provider response and persists the review draft", asy
   expect(await response.json()).toEqual({ scan_id: id, ...result });
   expect(state.update).toHaveBeenCalledWith({ state: "ready", result });
   expect(fetch).toHaveBeenCalledTimes(1);
+});
+
+it("detects mismatched Supabase projects without following an untrusted issuer", async () => {
+  const token =
+    "test." +
+    Buffer.from(JSON.stringify({ iss: "https://other-project.supabase.co/auth/v1" })).toString(
+      "base64url",
+    ) +
+    ".test";
+  expect(scannerProjectMismatch(token, "https://configured-project.supabase.co")).toBe(true);
+  expect(scannerProjectMismatch("invalid-token", "https://configured-project.supabase.co")).toBe(
+    false,
+  );
+  vi.stubEnv("SUPABASE_URL", "https://configured-project.supabase.co");
+  const response = await handleMealScan(
+    new Request("https://fit.test/api/meal-scan", {
+      headers: { authorization: "Bearer " + token },
+    }),
+  );
+  expect(response.status).toBe(503);
+  expect((await response.json()).code).toBe("SCANNER_PROJECT_MISMATCH");
+  expect(state.rpc).not.toHaveBeenCalled();
+  expect(fetch).not.toHaveBeenCalled();
+});
+it("rejects invalid sessions before reserving scan allowance", async () => {
+  state.getUser.mockResolvedValue({
+    data: { user: null },
+    error: { message: "Invalid JWT", status: 401 },
+  });
+  const response = await handleMealScan(request());
+  expect(response.status).toBe(401);
+  expect((await response.json()).code).toBe("SCANNER_SESSION_INVALID");
+  expect(state.rpc).not.toHaveBeenCalled();
+  expect(fetch).not.toHaveBeenCalled();
+});
+it("reports invalid server API credentials as setup errors", async () => {
+  state.getUser.mockResolvedValue({
+    data: { user: null },
+    error: { message: "Invalid API key", status: 401 },
+  });
+  const response = await handleMealScan(request());
+  expect(response.status).toBe(503);
+  expect((await response.json()).code).toBe("SCANNER_AUTH_CONFIG");
+  expect(state.rpc).not.toHaveBeenCalled();
 });

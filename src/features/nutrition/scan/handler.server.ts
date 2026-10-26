@@ -123,6 +123,25 @@ export function libraryMatches(
     };
   });
 }
+export function scannerProjectMismatch(token: string, serverUrl: string): boolean {
+  // Inspect only for a diagnostic rejection. This never grants access and the
+  // configured Supabase server still verifies every accepted token with getUser.
+  try {
+    const encoded = token.split(".")[1];
+    if (!encoded) return false;
+    const payload = JSON.parse(atob(encoded.replace(/-/g, "+").replace(/_/g, "/")));
+    if (typeof payload.iss !== "string") return false;
+    const issuer = new URL(payload.iss),
+      configured = new URL(serverUrl);
+    return (
+      issuer.hostname.endsWith(".supabase.co") &&
+      configured.hostname.endsWith(".supabase.co") &&
+      issuer.hostname !== configured.hostname
+    );
+  } catch {
+    return false;
+  }
+}
 export async function handleMealScan(request: Request): Promise<Response> {
   if (!["GET", "POST"].includes(request.method))
     return reply({ message: "Method not allowed" }, 405);
@@ -143,6 +162,15 @@ export async function handleMealScan(request: Request): Promise<Response> {
   const authorization = request.headers.get("authorization") ?? "";
   if (!/^Bearer \S+$/.test(authorization))
     return reply({ message: "Sign in before scanning a meal." }, 401);
+  if (scannerProjectMismatch(authorization.slice(7), process.env["SUPABASE_URL"]!))
+    return reply(
+      {
+        code: "SCANNER_PROJECT_MISMATCH",
+        message:
+          "The scanner server and this app use different Supabase projects. The app administrator must align the server and frontend Supabase settings, then redeploy.",
+      },
+      503,
+    );
   const userClient = createClient(
     process.env["SUPABASE_URL"]!,
     process.env["SUPABASE_PUBLISHABLE_KEY"]!,
@@ -153,8 +181,33 @@ export async function handleMealScan(request: Request): Promise<Response> {
   );
   try {
     const { data: auth, error: authError } = await userClient.auth.getUser(authorization.slice(7));
-    if (authError || !auth.user)
-      return reply({ message: "Your session expired. Please sign in again." }, 401);
+    if (authError || !auth.user) {
+      if (authError && (/api.?key/i.test(authError.message) || authError.status === 403))
+        return reply(
+          {
+            code: "SCANNER_AUTH_CONFIG",
+            message:
+              "The scanner could not verify the server Supabase credentials. The app administrator must check that its URL and publishable key belong to the same project.",
+          },
+          503,
+        );
+      if (authError && (!authError.status || authError.status >= 500))
+        return reply(
+          {
+            code: "SCANNER_AUTH_UNAVAILABLE",
+            message: "The scanner could not reach the sign-in service. Please try again later.",
+          },
+          503,
+        );
+      return reply(
+        {
+          code: "SCANNER_SESSION_INVALID",
+          message:
+            "The scanner could not verify your sign-in session. Sign out and sign in again. If it continues, the app administrator must check the server Supabase settings.",
+        },
+        401,
+      );
+    }
     const { data: profile, error: profileError } = await userClient
       .from("profiles")
       .select("date_of_birth")
@@ -299,6 +352,19 @@ export async function handleMealScan(request: Request): Promise<Response> {
         await supabaseAdmin.from("meal_scan_gate").update({ blocked_until: retryAt }).eq("id", 1);
         await supabaseAdmin.from("meal_scans").update({ state: "failed" }).eq("id", requestId);
         return reply({ available: false, message: FREE_LIMIT_MESSAGE, retry_at: retryAt }, 429);
+      }
+      if ([401, 403, 404].includes(response.status)) {
+        await supabaseAdmin.from("meal_scans").update({ state: "failed" }).eq("id", requestId);
+        return reply(
+          {
+            available: false,
+            message:
+              response.status === 404
+                ? "The configured Gemini model is unavailable. The app administrator needs to check the scanner settings."
+                : "Google rejected the Gemini key or project permissions. The app administrator needs to update the server key and redeploy.",
+          },
+          503,
+        );
       }
       if (!response.ok) throw new Error("provider");
       const payload = await response.json();

@@ -34,6 +34,9 @@ export function MealScanner({
   const [busy, setBusy] = useState<"photo" | "scan" | "save" | null>(null);
   const [photo, setPhoto] = useState<Photo | null>(null);
   const [allowance, setAllowance] = useState<ScanAllowance | null>(null);
+  const [checking, setChecking] = useState(true);
+  const checkVersion = useRef(0);
+  const [checkedAt, setCheckedAt] = useState<string | null>(null);
   const [error, setError] = useState("");
   const [consent, setConsent] = useState(false);
   const [result, setResult] = useState<ScanResult | null>(null);
@@ -44,17 +47,27 @@ export function MealScanner({
   const foods = useFoods("");
   const qc = useQueryClient();
   const check = async (signal?: AbortSignal) => {
+    const version = ++checkVersion.current;
+    setChecking(true);
     try {
       const available = await scanRequest<ScanAllowance>("GET", undefined, signal);
-      if (!signal?.aborted) setAllowance(available);
+      if (!signal?.aborted && version === checkVersion.current) {
+        setAllowance(available);
+        setError("");
+      }
     } catch (e) {
-      if (!signal?.aborted) {
+      if (!signal?.aborted && version === checkVersion.current) {
         const issue = e as Error & { retryAt?: string };
         setAllowance({
           available: false,
           message: issue.message,
           ...(issue.retryAt ? { retry_at: issue.retryAt } : {}),
         });
+      }
+    } finally {
+      if (!signal?.aborted && version === checkVersion.current) {
+        setChecking(false);
+        setCheckedAt(new Date().toLocaleTimeString());
       }
     }
   };
@@ -82,7 +95,7 @@ export function MealScanner({
     }
   }
   async function analyze() {
-    if (!photo || !consent || !allowance?.available || lock.current) return;
+    if (!photo || !consent || !allowance?.available || checking || lock.current) return;
     lock.current = true;
     setBusy("scan");
     setError("");
@@ -190,32 +203,64 @@ export function MealScanner({
           </p>
         </div>
         {!result && (
-          <div className="rounded-xl border p-3 text-xs text-muted-foreground" role="status">
-            {allowance ? allowance.message : "Checking free scanning availability…"}
-            {allowance?.available && allowance.remaining !== undefined && (
-              <span className="mt-1 block">
-                Up to {allowance.remaining} scans remaining in your daily allowance.
-              </span>
-            )}
-            {allowance?.retry_at && (
-              <span className="mt-1 block">
-                Try again after {new Date(allowance.retry_at).toLocaleString()}.
-              </span>
-            )}
-            {allowance && !allowance.available && (
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                className="mt-3"
-                disabled={!!busy}
-                onClick={() => void check()}
-              >
-                <RefreshCw className="size-3" />
-                Check availability
-              </Button>
-            )}
-          </div>
+          <section
+            className="space-y-3 rounded-2xl border bg-card p-4"
+            aria-label="Scanning availability"
+          >
+            <div
+              role="status"
+              aria-live="polite"
+              className="text-xs leading-relaxed text-muted-foreground"
+            >
+              <p className="mb-1 flex items-center gap-2 text-sm font-semibold text-foreground">
+                {checking ? (
+                  <Loader2 className="size-4 animate-spin text-primary" />
+                ) : allowance?.available ? (
+                  <Check className="size-4 text-primary" />
+                ) : (
+                  <ScanLine className="size-4 text-muted-foreground" />
+                )}
+                {checking
+                  ? "Checking availability…"
+                  : allowance?.available
+                    ? "Ready to scan"
+                    : "Scanning unavailable"}
+              </p>
+              <p>
+                {allowance
+                  ? allowance.message
+                  : "Checking your account and free scanning allowance."}
+              </p>
+              {allowance?.available && allowance.remaining !== undefined && (
+                <p className="mt-1">
+                  Up to {allowance.remaining} scans remaining in your daily allowance.
+                </p>
+              )}
+              {allowance?.retry_at && (
+                <p className="mt-1">
+                  Try again after {new Date(allowance.retry_at).toLocaleString()}.
+                </p>
+              )}
+              {!checking && checkedAt && (
+                <p className="mt-2 text-[11px]">Last checked at {checkedAt}</p>
+              )}
+            </div>
+            <Button
+              type="button"
+              variant="tonal"
+              className="min-h-11 h-auto w-full whitespace-normal px-5 py-3 sm:w-auto"
+              disabled={checking || !!busy}
+              aria-busy={checking}
+              onClick={() => void check()}
+            >
+              {checking ? (
+                <Loader2 className="size-4 animate-spin" />
+              ) : (
+                <RefreshCw className="size-4" />
+              )}
+              {checking ? "Checking…" : "Check availability"}
+            </Button>
+          </section>
         )}
         <input
           type="file"
@@ -471,6 +516,23 @@ export function MealScanner({
         )}
       </div>
       <ModalActionBar>
+        {!result && (
+          <p
+            id="meal-analysis-help"
+            role="status"
+            className="mb-3 text-xs leading-relaxed text-muted-foreground"
+          >
+            {checking
+              ? "Checking whether scanning is available…"
+              : !allowance?.available
+                ? "Analysis is unavailable until the availability check succeeds. Manual food logging remains available."
+                : !photo
+                  ? "Take a photo or choose an image to continue."
+                  : !consent
+                    ? "Confirm photo processing above to enable Analyze meal."
+                    : "Ready. Analyze meal will identify the foods for you to review."}
+          </p>
+        )}
         <div className="flex flex-col gap-3 sm:flex-row sm:justify-end">
           <Button type="button" variant="outline" disabled={!!busy} onClick={onClose}>
             Cancel
@@ -480,9 +542,10 @@ export function MealScanner({
             className="min-h-12 whitespace-normal px-6"
             disabled={
               !!busy ||
-              (!result && (!photo || !consent || !allowance?.available)) ||
+              (!result && (checking || !photo || !consent || !allowance?.available)) ||
               (!!result && !items.length)
             }
+            aria-describedby={!result ? "meal-analysis-help" : undefined}
             onClick={() => void (result ? save() : analyze())}
           >
             {busy ? (

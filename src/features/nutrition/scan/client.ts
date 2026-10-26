@@ -1,4 +1,12 @@
 import { supabase } from "@/integrations/supabase/client";
+let sessionRefresh: ReturnType<typeof supabase.auth.refreshSession> | null = null;
+function refreshScannerSession() {
+  if (!sessionRefresh)
+    sessionRefresh = supabase.auth.refreshSession().finally(() => {
+      sessionRefresh = null;
+    });
+  return sessionRefresh;
+}
 export async function scanRequest<T>(
   method: "GET" | "POST",
   body?: unknown,
@@ -6,31 +14,65 @@ export async function scanRequest<T>(
 ): Promise<T> {
   const { data } = await supabase.auth.getSession();
   if (!data.session) throw new Error("Please sign in before scanning a meal.");
-  const response = await fetch("/api/meal-scan", {
-    method,
-    headers: {
-      Authorization: `Bearer ${data.session.access_token}`,
-      ...(body ? { "Content-Type": "application/json" } : {}),
-    },
-    ...(body ? { body: JSON.stringify(body) } : {}),
-    ...(signal ? { signal } : {}),
-  });
-  let result;
+  const controller = new AbortController();
+  const abort = () => controller.abort();
+  if (signal?.aborted) controller.abort();
+  signal?.addEventListener("abort", abort, { once: true });
+  const timer = setTimeout(() => controller.abort(), method === "GET" ? 15000 : 60000);
   try {
-    result = await response.json();
-  } catch {
-    throw new Error("Meal scanning is unavailable. Please use manual logging.");
-  }
-  if (!response.ok) {
-    const error = new Error(result.message ?? "Meal scanning is unavailable.") as Error & {
-      retryAt?: string;
-      quota?: boolean;
-    };
-    error.retryAt = result.retry_at;
-    error.quota = response.status === 429;
+    const send = (token: string) =>
+      fetch("/api/meal-scan", {
+        method,
+        headers: {
+          Authorization: `Bearer ${token}`,
+          ...(body ? { "Content-Type": "application/json" } : {}),
+        },
+        ...(body ? { body: JSON.stringify(body) } : {}),
+        signal: controller.signal,
+        cache: "no-store",
+      });
+    let response = await send(data.session.access_token);
+    if (response.status === 401 && !controller.signal.aborted) {
+      // The scanner rejects authentication before reserving quota or calling Gemini.
+      // One authenticated retry therefore cannot duplicate a scan or meal save.
+      const refreshed = await refreshScannerSession();
+      if (refreshed.error || !refreshed.data.session)
+        throw new Error(
+          "Your sign-in session could not be renewed. Sign out of FitTrack and sign in again.",
+        );
+      await response.body?.cancel();
+      response = await send(refreshed.data.session.access_token);
+    }
+    let result;
+    try {
+      result = await response.json();
+    } catch {
+      throw new Error(
+        response.status === 404
+          ? "The scanner endpoint is not deployed yet. Redeploy the latest app, or add food manually."
+          : "The scanner returned an unexpected response. Please retry or use manual logging.",
+      );
+    }
+    if (!response.ok) {
+      const error = new Error(result.message ?? "Meal scanning is unavailable.") as Error & {
+        retryAt?: string;
+        quota?: boolean;
+      };
+      error.retryAt = result.retry_at;
+      error.quota = response.status === 429;
+      throw error;
+    }
+    return result as T;
+  } catch (error) {
+    if (controller.signal.aborted && !signal?.aborted)
+      throw new Error("The scanner took too long to respond. Check your connection and try again.");
+    if (error instanceof TypeError)
+      throw new Error("Could not reach the scanner. Check your connection and try again.");
     throw error;
+  } finally {
+    clearTimeout(timer);
+    signal?.removeEventListener("abort", abort);
   }
-  return result as T;
 }
 export async function prepareMealPhoto(
   file: File,

@@ -1,4 +1,4 @@
-import { render, screen, fireEvent, waitFor, cleanup } from "@testing-library/react";
+import { render, screen, fireEvent, waitFor, cleanup, act } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 const state = vi.hoisted(() => ({
@@ -128,4 +128,26 @@ it("reuses selected food nutrition instead of AI values", async () => {
   expect(screen.getByLabelText("Calories (kcal) 1")).toHaveValue(130);
   expect(screen.getByLabelText("Calories (kcal) 1")).toBeDisabled();
   expect(screen.getByLabelText("Food name 1")).toHaveValue("Cooked White Rice");
+});
+
+it("shows checking progress and refreshes availability when retried", async () => {
+  let finish!: (value: unknown) => void;
+  state.request.mockRejectedValueOnce(new Error("Temporarily unavailable.")).mockImplementationOnce(
+    () =>
+      new Promise((resolve) => {
+        finish = resolve;
+      }),
+  );
+  show();
+  await screen.findByText("Temporarily unavailable.");
+  fireEvent.click(screen.getByRole("button", { name: "Check availability" }));
+  expect(screen.getByRole("button", { name: "Checking…" })).toBeDisabled();
+  expect(screen.getByText("Checking availability…")).toBeInTheDocument();
+  await act(async () =>
+    finish({ available: true, message: "Free meal scanning is available.", remaining: 2 }),
+  );
+  expect(screen.getByText("Ready to scan")).toBeInTheDocument();
+  expect(screen.getByRole("button", { name: "Check availability" })).toBeEnabled();
+  expect(screen.getByText(/Last checked at/)).toBeInTheDocument();
+  expect(screen.getByText("Take a photo or choose an image to continue.")).toBeInTheDocument();
 });
