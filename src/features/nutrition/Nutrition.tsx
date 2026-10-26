@@ -1,3 +1,5 @@
+import { MealScanner } from "./scan/meal-scanner";
+import { Camera } from "lucide-react";
 import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import {
@@ -35,6 +37,7 @@ import { MealEntryModal, CustomFoodModal } from "./nutrition-modals";
 const MEALS = ["breakfast", "lunch", "dinner", "snack"];
 export function Nutrition() {
   const [libraryOpen, setLibraryOpen] = useState(false);
+  const [scanOpen, setScanOpen] = useState(false);
   const [customOpen, setCustomOpen] = useState(false);
   const [mealDefault, setMealDefault] = useState("breakfast");
   const settings = useSettings();
@@ -203,14 +206,27 @@ export function Nutrition() {
   const remaining = calorieTarget ? Math.round(calorieTarget - totals.calories) : null;
   return (
     <>
+      {scanOpen && (
+        <MealScanner meal={mealDefault} date={date} onClose={() => setScanOpen(false)} />
+      )}
       <PageHeader
         title="Nutrition"
         subtitle="Small choices. A stronger you."
         actions={
-          <Button className="h-11 rounded-xl" variant="outline" onClick={() => setCustomOpen(true)}>
-            <Plus className="size-4" />
-            Create custom food
-          </Button>
+          <div className="flex flex-wrap gap-2">
+            <Button type="button" className="h-11 rounded-xl" onClick={() => setScanOpen(true)}>
+              <Camera className="size-4" />
+              Scan meal
+            </Button>
+            <Button
+              className="h-11 rounded-xl"
+              variant="outline"
+              onClick={() => setCustomOpen(true)}
+            >
+              <Plus className="size-4" />
+              Create custom food
+            </Button>
+          </div>
         }
       />
       <div className="mb-6 flex flex-wrap items-center justify-between gap-4 rounded-2xl border bg-card p-4">
@@ -343,19 +359,34 @@ export function Nutrition() {
                       </p>
                     </div>
                   </div>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="rounded-xl text-primary"
-                    onClick={() => {
-                      setMealDefault(meal);
-                      setLibraryOpen(true);
-                    }}
-                    aria-label={`Add food to ${meal}`}
-                  >
-                    <Plus className="size-4" />
-                    Add food
-                  </Button>
+                  <div className="flex flex-wrap justify-end gap-1">
+                    <Button
+                      type="button"
+                      variant="tonal"
+                      size="sm"
+                      aria-label={`Scan meal for ${meal}`}
+                      onClick={() => {
+                        setMealDefault(meal);
+                        setScanOpen(true);
+                      }}
+                    >
+                      <Camera className="size-4" />
+                      Scan
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="rounded-xl text-primary"
+                      onClick={() => {
+                        setMealDefault(meal);
+                        setLibraryOpen(true);
+                      }}
+                      aria-label={`Add food to ${meal}`}
+                    >
+                      <Plus className="size-4" />
+                      Add food
+                    </Button>
+                  </div>
                 </div>
                 {entries.map((l) => (
                   <div
@@ -364,11 +395,17 @@ export function Nutrition() {
                     className="flex items-center gap-3 border-t py-4 last:pb-0"
                   >
                     <FoodImage
+                      imagePath={l.image_path ?? null}
                       name={l.food_name_snapshot}
                       className="size-12 shrink-0 rounded-xl border border-border/50 object-cover sm:size-16"
                     />
                     <div className="min-w-0 flex-1">
                       <p className="break-words text-sm font-medium">{l.food_name_snapshot}</p>
+                      {l.nutrition_source === "ai_estimate" && (
+                        <span className="text-[10px] font-semibold text-primary">
+                          AI-estimated nutrition
+                        </span>
+                      )}
                       <p className="mt-1 text-xs text-muted-foreground">
                         {l.quantity} {l.unit} · {Math.round(l.calories_snapshot)} kcal ·{" "}
                         {Math.round(l.protein_snapshot_g)} g protein

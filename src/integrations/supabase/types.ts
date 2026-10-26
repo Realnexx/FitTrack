@@ -14,6 +14,13 @@ export type Database = {
   }
   public: {
     Tables: {
+      meal_scans: {
+        Row: {id:string;user_id:string;created_at:string;state:string;result:Json|null;log_ids:string[]|null;reserved_tokens:number}
+        Insert: {id:string;user_id:string;created_at?:string;state?:string;result?:Json|null;reserved_tokens?:number}
+        Update: {state?:string;result?:Json|null;log_ids?:string[]|null}
+        Relationships: []
+      }
+      meal_scan_gate: {Row:{id:number;blocked_until:string|null};Insert:{id:number;blocked_until?:string|null};Update:{blocked_until?:string|null};Relationships:[]}
       bmi_logs: {
         Row: {id:string;user_id:string;weight_kg:number;height_cm:number;bmi:number;adult_confirmed:boolean;recorded_at:string}
         Insert: {id?:string;user_id?:string;weight_kg:number;height_cm:number;adult_confirmed?:boolean;recorded_at?:string}
@@ -121,6 +128,8 @@ export type Database = {
       }
       food_logs: {
         Row: {
+          nutrition_source: string | null
+          image_path: string | null
           calories_snapshot: number
           carbs_snapshot_g: number
           consumed_at: string
@@ -139,6 +148,8 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          nutrition_source?: string | null
+          image_path?: string | null
           calories_snapshot: number
           carbs_snapshot_g: number
           consumed_at?: string
@@ -157,6 +168,8 @@ export type Database = {
           user_id?: string
         }
         Update: {
+          nutrition_source?: string | null
+          image_path?: string | null
           calories_snapshot?: number
           carbs_snapshot_g?: number
           consumed_at?: string
@@ -186,6 +199,7 @@ export type Database = {
       }
       foods: {
         Row: {
+          image_path: string | null
           calories: number
           carbs_g: number
           created_at: string
@@ -201,6 +215,7 @@ export type Database = {
           source_note: string | null
         }
         Insert: {
+          image_path?: string | null
           calories: number
           carbs_g?: number
           created_at?: string
@@ -216,6 +231,7 @@ export type Database = {
           source_note?: string | null
         }
         Update: {
+          image_path?: string | null
           calories?: number
           carbs_g?: number
           created_at?: string
@@ -630,6 +646,9 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      unused_meal_photos: {Args:{p_user:string};Returns:string[]}
+      reserve_meal_scan: {Args:{p_user:string;p_request:string;p_daily:number;p_personal:number;p_rpm:number;p_tpm:number;p_preview?:boolean};Returns:Json}
+      save_scanned_meal: {Args:{p_scan:string;p_items:Json;p_meal:string;p_date:string;p_image:string};Returns:string[]}
       complete_onboarding: { Args: { payload: Json }; Returns: undefined }
       start_workout: { Args: { plan_id: string }; Returns: string }
       reorder_plan_exercises: { Args: { first_id: string; second_id: string }; Returns: undefined }
@@ -766,4 +785,6 @@ export const Constants = {
     Enums: {},
   },
 } as const
+
+
 

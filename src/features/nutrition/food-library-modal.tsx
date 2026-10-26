@@ -69,7 +69,11 @@ export function FoodLibraryModal({
               className="group flex w-full items-center gap-3 rounded-xl border border-transparent bg-elevated/25 p-3 text-left transition-colors hover:border-primary/30 hover:bg-primary/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
               onClick={() => onChoose(food)}
             >
-              <FoodImage name={food.name} className="size-16 shrink-0 rounded-xl object-cover" />
+              <FoodImage
+                imagePath={food.image_path ?? null}
+                name={food.name}
+                className="size-16 shrink-0 rounded-xl object-cover"
+              />
               <span className="min-w-0 flex-1">
                 <span className="block text-sm font-medium">
                   {food.name}

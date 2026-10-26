@@ -50,7 +50,7 @@ export function ModalFormActions({
           hint
         )}
       </p>
-      <div className="grid grid-cols-2 gap-3 sm:flex sm:shrink-0">
+      <div className="grid grid-cols-1 gap-3 min-[400px]:grid-cols-[auto_minmax(0,1fr)] sm:flex sm:shrink-0">
         <Button
           type="button"
           variant="outline"
@@ -65,13 +65,12 @@ export function ModalFormActions({
           form={form}
           disabled={pending || disabled}
           aria-busy={pending}
-          className="h-11 sm:min-w-36 rounded-xl px-5 font-semibold transition-all active:scale-[0.98]"
+          className="min-h-11 h-auto whitespace-normal rounded-xl px-6 py-3 text-center font-semibold leading-snug transition-all active:scale-[0.98] sm:min-w-36"
         >
           {pending ? <Loader2 className="size-4 animate-spin" /> : <Save className="size-4" />}
-          {pending ? pendingLabel : label}
+          <span className="min-w-0">{pending ? pendingLabel : label}</span>
         </Button>
       </div>
     </div>
   );
 }
-

@@ -39,7 +39,7 @@ beforeAll(async () => {
   );
   await db.exec(`create schema storage;
     create table storage.buckets(id text primary key,name text,public boolean,file_size_limit bigint,allowed_mime_types text[]);
-    create table storage.objects(id uuid default gen_random_uuid(),bucket_id text,name text);
+    create table storage.objects(id uuid default gen_random_uuid(),bucket_id text,name text,created_at timestamptz default now());
     create function storage.foldername(name text) returns text[] language sql immutable as $$select string_to_array(name,'/')$$;
     alter table storage.objects enable row level security;
     grant usage on schema storage to authenticated,anon;
@@ -53,6 +53,7 @@ beforeAll(async () => {
     "0004_profile_connections.sql",
     "0005_bmi_history.sql",
     "0006_workout_set_limits.sql",
+    "0007_meal_scanner.sql",
   ])
     await db.exec(
       readFileSync(new URL("../../drizzle/migrations/" + file, import.meta.url), "utf8"),
@@ -434,4 +435,155 @@ it("caps workout sets, completes the exercise and preserves editing", async () =
     ]),
   );
   expect(reopened.rows[0]?.status).toBe("pending");
+});
+
+describe("meal scanner quota and atomic saves", () => {
+  const scanId = "77777777-7777-4777-8777-777777777777";
+  const newId = "88888888-8888-4888-8888-888888888888";
+  const photo = alice + "/" + scanId + ".jpg";
+  const detected = [
+    {
+      food_id: null,
+      name: "Test photographed dish",
+      quantity: 150,
+      unit: "g",
+      calories: 240,
+      protein: 15,
+      carbs: 25,
+      fat: 9,
+      notes: "Estimate",
+    },
+  ];
+  it("reserves quota atomically and denies direct client access to the quota function", async () => {
+    await expect(
+      asUser(alice, (tx) =>
+        tx.query("select reserve_meal_scan($1,$2,1,1,2,20480,false)", [alice, scanId]),
+      ),
+    ).rejects.toThrow();
+    const first = await db.query<{ result: { allowed: boolean } }>(
+      "select reserve_meal_scan($1,$2,1,1,2,20480,false) result",
+      [alice, scanId],
+    );
+    expect(first.rows[0]?.result.allowed).toBe(true);
+    const duplicate = await db.query<{ result: { existing: boolean } }>(
+      "select reserve_meal_scan($1,$2,1,1,2,20480,false) result",
+      [alice, scanId],
+    );
+    expect(duplicate.rows[0]?.result.existing).toBe(true);
+    const second = await db.query<{ result: { allowed: boolean } }>(
+      "select reserve_meal_scan($1,$2,1,1,2,20480,false) result",
+      [bob, newId],
+    );
+    expect(second.rows[0]?.result.allowed).toBe(false);
+    expect((await db.query("select id from meal_scans")).rows).toHaveLength(1);
+  });
+  it("cannot read another user's scan drafts or private photo", async () => {
+    await expect(asUser(bob, (tx) => tx.query("select * from meal_scans"))).rejects.toThrow(
+      "permission denied",
+    );
+    await db.query("insert into storage.objects(bucket_id,name) values ('meal-photos',$1)", [
+      photo,
+    ]);
+    expect(
+      (await asUser(bob, (tx) => tx.query("select * from storage.objects where name=$1", [photo])))
+        .rows,
+    ).toHaveLength(0);
+    expect(
+      (
+        await asUser(alice, (tx) =>
+          tx.query("select * from storage.objects where name=$1", [photo]),
+        )
+      ).rows,
+    ).toHaveLength(1);
+  });
+  it("rolls back foods and diary entries when any selected item is invalid", async () => {
+    await db.query("update meal_scans set state='ready',result=$1 where id=$2", [
+      JSON.stringify({ items: detected }),
+      scanId,
+    ]);
+    await expect(
+      asUser(alice, (tx) =>
+        tx.query("select save_scanned_meal($1,$2::jsonb,'lunch',current_date,$3)", [
+          scanId,
+          JSON.stringify([...detected, { ...detected[0], name: "Bad food", calories: -1 }]),
+          photo,
+        ]),
+      ),
+    ).rejects.toThrow();
+    expect(
+      (
+        await asUser(alice, (tx) =>
+          tx.query("select * from foods where name='Test photographed dish'"),
+        )
+      ).rows,
+    ).toHaveLength(0);
+    await expect(
+      asUser(bob, (tx) =>
+        tx.query("select save_scanned_meal($1,$2::jsonb,'lunch',current_date,$3)", [
+          scanId,
+          JSON.stringify(detected),
+          photo,
+        ]),
+      ),
+    ).rejects.toThrow("Scan not found");
+  });
+  it("saves personal food and meal together and returns the same entries on retry", async () => {
+    const args = [scanId, JSON.stringify(detected), photo];
+    const first = await asUser(alice, (tx) =>
+      tx.query<{ ids: string[] }>(
+        "select save_scanned_meal($1,$2::jsonb,'lunch',current_date,$3) ids",
+        args,
+      ),
+    );
+    const repeated = await asUser(alice, (tx) =>
+      tx.query<{ ids: string[] }>(
+        "select save_scanned_meal($1,$2::jsonb,'lunch',current_date,$3) ids",
+        args,
+      ),
+    );
+    expect(first.rows[0]?.ids).toEqual(repeated.rows[0]?.ids);
+    const food = await asUser(alice, (tx) =>
+      tx.query<{ image_path: string; created_by: string }>(
+        "select * from foods where name='Test photographed dish'",
+      ),
+    );
+    expect(food.rows).toHaveLength(1);
+    expect(food.rows[0]?.image_path).toBe(photo);
+    expect(food.rows[0]?.created_by).toBe(alice);
+    const logs = await asUser(alice, (tx) =>
+      tx.query<{ calories_snapshot: number; image_path: string }>(
+        "select * from food_logs where image_path=$1",
+        [photo],
+      ),
+    );
+    expect(logs.rows).toHaveLength(1);
+    expect(Number(logs.rows[0]?.calories_snapshot)).toBe(240);
+    const deleted = await asUser(alice, (tx) =>
+      tx.query("delete from storage.objects where name=$1 returning name", [photo]),
+    );
+    expect(deleted.rows).toHaveLength(0);
+  });
+});
+
+it("enforces minute/token allowances and the shared provider circuit breaker", async () => {
+  const request = "99999999-9999-4999-8999-999999999999";
+  await db.exec("update meal_scans set created_at=now()");
+  const minute = await db.query<{ result: { allowed: boolean } }>(
+    "select reserve_meal_scan($1,$2,10,5,1,20480,true) result",
+    [bob, request],
+  );
+  expect(minute.rows[0]?.result.allowed).toBe(false);
+  const tokens = await db.query<{ result: { allowed: boolean } }>(
+    "select reserve_meal_scan($1,$2,10,5,2,10240,true) result",
+    [bob, request],
+  );
+  expect(tokens.rows[0]?.result.allowed).toBe(false);
+  await db.exec("update meal_scan_gate set blocked_until=now()+interval '1 hour' where id=1");
+  const blocked = await db.query<{ result: { allowed: boolean } }>(
+    "select reserve_meal_scan($1,$2,10,5,60,1000000,true) result",
+    [bob, request],
+  );
+  expect(blocked.rows[0]?.result.allowed).toBe(false);
+  expect((await db.query("select id from meal_scans")).rows).toHaveLength(1);
+  await db.exec("update meal_scan_gate set blocked_until=null where id=1");
 });

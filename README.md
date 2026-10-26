@@ -140,3 +140,32 @@ Apply `drizzle/migrations/0005_bmi_history.sql` in the Supabase SQL editor after
 ## Planned exercise set limits
 
 Apply `drizzle/migrations/0006_workout_set_limits.sql` after migration 0005, then deploy. Exercises show Completed and stop accepting new sets at their planned set count. The database enforces the limit and automatically marks the final planned set complete. Existing sets remain editable. Deleting a set below the target reopens a completed exercise. Existing excess sets are preserved.
+
+## Photo meal scanner (migration 0007)
+
+Apply `drizzle/migrations/0007_meal_scanner.sql` in the Supabase SQL editor after migrations 0000–0006. Deploy the updated application. The scanner appears on Nutrition and each meal section. Users review food matches, portions and estimated nutrition before saving. Missing foods are saved to the user's personal library with the meal photo; existing foods retain their original nutrition values. One database transaction saves all selected diary entries and new foods. Repeating Save for the same scan returns the original entries.
+
+Configure these **server-only** variables in Vercel (or your private local server environment), then redeploy. Never prefix these with `VITE_`, paste them into chat, or commit them:
+
+- `SUPABASE_URL`: the same Supabase project used by the frontend.
+- `SUPABASE_PUBLISHABLE_KEY`: that project's publishable/anon key.
+- `SUPABASE_SERVICE_ROLE_KEY`: server secret for quota reservations and scan drafts. Never expose this key in the browser.
+- `GEMINI_API_KEY`: a Google AI Studio key for a **dedicated Free-tier project without an active linked billing account**. This integration uses Google's direct `gemini-2.5-flash-lite` API, not OpenRouter.
+- `MEAL_SCAN_ENABLED=true`
+- `MEAL_SCAN_FREE_TIER_CONFIRMED=true`: set only after verifying the Google project is Free tier and the selected model has a free image/text allowance. The app cannot independently inspect your billing configuration. If billing is enabled later, disable scanning and re-check this flag; code-side limits alone cannot guarantee a zero-dollar Google bill on a paid project.
+- `MEAL_SCAN_ELIGIBILITY_CONFIRMED=true`: set only after reviewing Google's current age, region and unpaid-data terms for the intended audience. Google prohibits using the API in clients directed at or likely accessed by under-18s and requires Paid Services for clients available in the EEA, UK and Switzerland. The adult profile check and consent checkbox do not by themselves establish compliance for a public app.
+- `MEAL_SCAN_DAILY_LIMIT`: positive integer, at or below the current project/model daily allowance, maximum 1000.
+- `MEAL_SCAN_USER_DAILY_LIMIT`: positive integer, maximum 100; keep lower than the shared daily allowance.
+- `MEAL_SCAN_RPM_LIMIT`: positive integer, at or below the current model requests-per-minute allowance, maximum 60.
+- `MEAL_SCAN_TPM_LIMIT`: positive integer, at or below the model tokens-per-minute allowance, 10240–1000000. Each attempt conservatively reserves 10240 tokens (bounded prompt/image plus at most 2048 output tokens). If your allowance is below 10240, leave this scanner disabled.
+
+Do not copy arbitrary quota numbers: view the active limits for this project in Google AI Studio. Keep the key/project exclusive to this feature, because usage from other clients is not visible to the local counters. No variables or invalid limits means scanning stays disabled and manual logging remains available. Quota checks and reservations happen atomically in Postgres before any Gemini request. Failed attempts conservatively retain their reservation. Daily counters reset at midnight America/Los_Angeles; rate limits also use a rolling minute. A Google 429 response opens a shared 24-hour circuit breaker, stops retries and displays the retry time. There is no alternate model or paid fallback.
+
+Privacy and retention: only compressed food-photo pixels and a small public reference-food matching catalogue are sent to Google; personal food-library names are matched on the server and are not sent, with explicit user consent. Account identifiers, birth dates, fitness goals, BMI and weight history are not sent. The server checks an existing profile birth date for age 18+. The browser re-encodes to JPEG at no more than 1024px and 512KB, removing original metadata. The selected photo is not uploaded to Supabase until Save. Saved photos use a private `meal-photos` bucket with owner-only reads and short-lived signed URLs; private paths are attached to personal foods and diary snapshots. Uncommitted uploads are removed on save failure; abandoned unreferenced uploads older than 24 hours are cleaned opportunistically when that user next opens an available scanner. Draft results expire after 24 hours when another scan is reserved. This is not a guaranteed scheduled deletion job; configure a periodic cleanup separately if you need a strict retention deadline. Saved diary/library photos are preserved.
+
+Google's unpaid service may use submitted images/results for improvement and human review and prohibits sensitive, confidential or personal information. Users are instructed to submit food-only images. Do not enable this integration for audiences or data types incompatible with those terms.
+
+Deployment checks: sign in as an eligible adult; verify disabled/unconfigured state, a real library-matched meal, an unfamiliar food, editing portions, private photo display, duplicate Save, and quota exhaustion. Live AI calls cannot be verified until the server secrets and migration are installed. Local tests use mocked Gemini responses and a disposable database.
+
+References: https://ai.google.dev/gemini-api/docs/pricing, https://ai.google.dev/gemini-api/docs/rate-limits, https://ai.google.dev/gemini-api/terms.
+
