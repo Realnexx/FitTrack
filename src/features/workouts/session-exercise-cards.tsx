@@ -92,6 +92,9 @@ export function SessionExerciseCards({
             <p className="mt-2 text-xs text-muted-foreground">
               {e.sets.length} / {e.target_sets} sets recorded
             </p>
+            <span className="mt-4 inline-flex min-h-9 items-center gap-2 rounded-lg border border-primary/30 bg-primary/10 px-3 text-xs font-semibold text-primary group-hover:bg-primary/20">
+              Open exercise <ChevronRight className="size-3.5" />
+            </span>
           </button>
         ))}
       </div>

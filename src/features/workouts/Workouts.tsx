@@ -152,7 +152,7 @@ export function Workouts() {
         title="Your training, in focus"
         subtitle="Build your routine. Show up. Get stronger."
         actions={
-          <Button onClick={() => setOverlay("create")}>
+          <Button variant="tonal" onClick={() => setOverlay("create")}>
             <Plus className="size-4" />
             New plan
           </Button>
@@ -195,7 +195,7 @@ export function Workouts() {
                 Build a routine
               </Button>
             )}
-            <Button variant="ghost" onClick={() => setOverlay("schedule")}>
+            <Button variant="outline" onClick={() => setOverlay("schedule")}>
               <CalendarDays className="size-4" />
               Manage schedule
             </Button>
@@ -293,10 +293,11 @@ export function Workouts() {
                     <Button
                       variant="ghost"
                       size="icon"
+                      className="text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
                       aria-label={`Delete ${p.name}`}
                       onClick={() => setDeleting(p.id)}
                     >
-                      <Trash2 className="size-4 text-muted-foreground" />
+                      <Trash2 className="size-4" />
                     </Button>
                   </div>
                   <p className="mb-2 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">
@@ -340,7 +341,9 @@ export function Workouts() {
                 <p className="my-3 text-sm text-muted-foreground">
                   Add your exercises, sets, and targets to make a plan your own.
                 </p>
-                <Button onClick={() => setOverlay("create")}>Create your first plan</Button>
+                <Button variant="tonal" onClick={() => setOverlay("create")}>
+                  Create your first plan
+                </Button>
               </div>
             )}
           </section>
@@ -516,3 +519,4 @@ export function Workouts() {
     </>
   );
 }
+

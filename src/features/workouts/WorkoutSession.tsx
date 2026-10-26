@@ -1,3 +1,13 @@
+import {
+  CheckCheck,
+  ArrowRight,
+  SkipForward,
+  RotateCcw,
+  Trophy,
+  X,
+  Pencil,
+  Trash2,
+} from "lucide-react";
 import { SessionExerciseCards } from "./session-exercise-cards";
 import { ResponsiveModal } from "@/components/responsive-modal";
 import { ModalActionBar, ModalFormActions } from "@/components/modal-actions";
@@ -252,15 +262,16 @@ export function WorkoutSession({ id }: { id: string }) {
                             disabled={save.isPending}
                             onClick={() => setEditing(s)}
                           >
-                            Edit
+                            <Pencil className="size-3.5" /> Edit
                           </Button>
                           <Button
                             variant="ghost"
                             size="sm"
+                            className="text-destructive hover:bg-destructive/10 hover:text-destructive"
                             disabled={remove.isPending || save.isPending}
                             onClick={() => remove.mutate(s.id)}
                           >
-                            Delete
+                            <Trash2 className="size-3.5" /> Delete
                           </Button>
                         </div>
                       )}
@@ -395,24 +406,25 @@ export function WorkoutSession({ id }: { id: string }) {
                           setSelectedId(exercises[i + 1]!.id);
                         }}
                       >
-                        Next exercise
+                        Next exercise <ArrowRight className="size-4" />
                       </Button>
                     )}
                     {e.status === "pending" ? (
                       <>
                         <Button
                           variant="outline"
+                          className="border-primary/40 bg-primary/10 text-primary hover:bg-primary/20 hover:text-primary"
                           disabled={status.isPending || save.isPending || !e.sets.length}
                           onClick={() => status.mutate({ exercise: e.id, state: "completed" })}
                         >
-                          Mark exercise complete
+                          <CheckCheck className="size-4" /> Mark exercise complete
                         </Button>
                         <Button
                           variant="ghost"
                           disabled={status.isPending || save.isPending}
                           onClick={() => status.mutate({ exercise: e.id, state: "skipped" })}
                         >
-                          Skip exercise
+                          <SkipForward className="size-4" /> Skip exercise
                         </Button>
                       </>
                     ) : (
@@ -421,7 +433,7 @@ export function WorkoutSession({ id }: { id: string }) {
                         disabled={status.isPending || save.isPending}
                         onClick={() => status.mutate({ exercise: e.id, state: "pending" })}
                       >
-                        Reopen exercise
+                        <RotateCcw className="size-4" /> Reopen exercise
                       </Button>
                     )}
                     {editing?.workout_session_exercise_id === e.id && (
@@ -437,16 +449,20 @@ export function WorkoutSession({ id }: { id: string }) {
         </div>
       </ResponsiveModal>
       {running && (
-        <div className="mt-6 flex gap-3">
-          <Button disabled={finish.isPending} onClick={() => setConfirm("completed")}>
-            Finish workout
+        <div className="mt-6 flex flex-col gap-3 rounded-2xl border bg-card p-4 sm:flex-row sm:items-center sm:justify-end">
+          <Button
+            className="h-12 px-6"
+            disabled={finish.isPending}
+            onClick={() => setConfirm("completed")}
+          >
+            <Trophy className="size-4" /> Finish workout
           </Button>
           <Button
-            variant="outline"
+            variant="dangerOutline"
             disabled={finish.isPending}
             onClick={() => setConfirm("cancelled")}
           >
-            Cancel workout
+            <X className="size-4" /> Cancel workout
           </Button>
         </div>
       )}
