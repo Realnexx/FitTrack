@@ -136,3 +136,7 @@ Settings also stores optional TikTok, Facebook, GitHub, Instagram and X profile 
 ## Saving BMI history
 
 Apply `drizzle/migrations/0005_bmi_history.sql` in the Supabase SQL editor after migrations 0000–0004, then deploy the updated app. Progress → BMI calculator now has a Save BMI button and a BMI history section. Each private snapshot stores its timestamp, height, weight and adult-category confirmation. The database calculates BMI from those saved inputs. Saving does not update profile height or weight logs, and previous unsaved calculator results are not added retroactively.
+
+## Planned exercise set limits
+
+Apply `drizzle/migrations/0006_workout_set_limits.sql` after migration 0005, then deploy. Exercises show Completed and stop accepting new sets at their planned set count. The database enforces the limit and automatically marks the final planned set complete. Existing sets remain editable. Deleting a set below the target reopens a completed exercise. Existing excess sets are preserved.

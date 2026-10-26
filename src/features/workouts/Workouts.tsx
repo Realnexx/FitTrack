@@ -158,8 +158,8 @@ export function Workouts() {
           </Button>
         }
       />
-      <section className="mb-7 grid overflow-hidden rounded-2xl border bg-card lg:grid-cols-[1fr_auto]">
-        <div className="p-6 md:p-8">
+      <section className="mb-5 grid overflow-hidden rounded-2xl border bg-card lg:grid-cols-[1fr_auto]">
+        <div className="p-5 md:p-6">
           <p className="mb-4 text-xs font-semibold uppercase tracking-[0.2em] text-primary">
             {active.data
               ? "Keep your momentum"
@@ -176,7 +176,7 @@ export function Workouts() {
               : (currentPlan?.description ??
                 "Choose a routine below or create a plan that fits your goals and equipment.")}
           </p>
-          <div className="mt-6 flex flex-wrap gap-3">
+          <div className="mt-4 flex flex-wrap gap-3">
             {active.data ? (
               <Button asChild>
                 <Link to="/workouts/session/$id" params={{ id: active.data.id }}>
@@ -220,7 +220,7 @@ export function Workouts() {
           ))}
         </div>
       </section>
-      <section className="mb-8">
+      <section className="mb-5">
         <div className="mb-4 flex items-center justify-between">
           <h2 className="font-display text-lg font-semibold">This week's rhythm</h2>
           <Button variant="ghost" size="sm" onClick={() => setOverlay("schedule")}>
@@ -244,7 +244,7 @@ export function Workouts() {
                       setOverlay("details");
                     } else setOverlay("schedule");
                   }}
-                  className={`min-h-28 rounded-xl border p-3 text-left transition-colors hover:border-primary/50 ${date === today ? "border-primary/60 bg-primary/10" : "bg-card"}`}
+                  className={`min-h-24 rounded-xl border p-3 text-left transition-colors hover:border-primary/50 ${date === today ? "border-primary/60 bg-primary/10" : "bg-card"}`}
                   aria-label={
                     DAY_NAMES[parseISODate(date).getDay()] + ", " + (plan?.name ?? "Rest day")
                   }
@@ -266,8 +266,8 @@ export function Workouts() {
           </div>
         </div>
       </section>
-      <div className="grid items-start gap-7 xl:grid-cols-[minmax(0,1.6fr)_minmax(280px,1fr)]">
-        <div className="space-y-7">
+      <div className="grid items-start gap-5 xl:grid-cols-[minmax(0,1.6fr)_minmax(280px,1fr)]">
+        <div className="space-y-5">
           <section>
             <div className="mb-4 flex items-center justify-between">
               <div>
@@ -284,9 +284,9 @@ export function Workouts() {
               {plans.data?.map((p, i) => (
                 <article
                   key={p.id}
-                  className="rounded-2xl border bg-card p-5 transition-colors hover:border-primary/40"
+                  className="rounded-2xl border bg-card p-4 transition-colors hover:border-primary/40"
                 >
-                  <div className="mb-5 flex items-start justify-between">
+                  <div className="mb-3 flex items-start justify-between">
                     <span className="grid size-11 place-items-center rounded-xl bg-primary/10 text-primary">
                       <Dumbbell className="size-5" />
                     </span>
@@ -304,10 +304,10 @@ export function Workouts() {
                     Routine {String(i + 1).padStart(2, "0")}
                   </p>
                   <h3 className="font-display text-xl font-semibold">{p.name}</h3>
-                  <p className="mt-2 min-h-10 text-sm leading-relaxed text-muted-foreground">
+                  <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
                     {p.description || "A routine built around your training."}
                   </p>
-                  <p className="my-5 inline-flex items-center gap-2 text-xs text-muted-foreground">
+                  <p className="my-3 inline-flex items-center gap-2 text-xs text-muted-foreground">
                     <Layers className="size-3.5" />
                     {p.workout_plan_exercises.length} exercises
                   </p>
@@ -519,4 +519,3 @@ export function Workouts() {
     </>
   );
 }
-

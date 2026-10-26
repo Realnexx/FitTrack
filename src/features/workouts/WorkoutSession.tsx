@@ -1,3 +1,4 @@
+import { ArrowLeft, Pause, Play } from "lucide-react";
 import {
   CheckCheck,
   ArrowRight,
@@ -86,6 +87,11 @@ export function WorkoutSession({ id }: { id: string }) {
       if (query.data?.session.status !== "in_progress")
         throw new Error("This workout is no longer active.");
       const currentEdit = editing?.workout_session_exercise_id === exercise.id ? editing : null;
+      if (
+        !currentEdit &&
+        (exercise.status !== "pending" || exercise.sets.length >= exercise.target_sets)
+      )
+        throw new Error("All planned sets are already recorded.");
       const record = {
         user_id: await uid(),
         workout_session_exercise_id: exercise.id,
@@ -157,12 +163,15 @@ export function WorkoutSession({ id }: { id: string }) {
         title={session.title}
         subtitle={`${session.status.replaceAll("_", " ")} · ${new Date(session.started_at).toLocaleString()}`}
         actions={
-          <Button variant="outline" asChild>
-            <Link to="/workouts">Back to workouts</Link>
+          <Button variant="tonal" className="h-12 w-full border-primary/60 px-5 sm:w-auto" asChild>
+            <Link to="/workouts">
+              <ArrowLeft className="size-4" />
+              Back to workouts
+            </Link>
           </Button>
         }
       />
-      <div className="mb-5 flex flex-wrap items-center justify-between gap-4 rounded-2xl border bg-card p-5">
+      <div className="mb-3 flex flex-wrap items-center justify-between gap-3 rounded-2xl border bg-card p-4">
         <p>
           Session <strong className="tabular-nums">{fmtDuration(duration)}</strong> ·{" "}
           {exercises.reduce((s, e) => s + e.sets.length, 0)} sets ·{" "}
@@ -172,13 +181,17 @@ export function WorkoutSession({ id }: { id: string }) {
           kg volume
         </p>
         {running && (
-          <div className="flex items-center gap-3">
-            <span aria-live="polite">Rest {fmtDuration(restSeconds)}</span>
+          <div className="flex w-full items-center justify-between gap-3 rounded-xl border border-primary/25 bg-primary/5 p-2 sm:w-auto">
+            <span aria-live="polite" className="px-2 text-sm font-semibold tabular-nums">
+              Rest {fmtDuration(restSeconds)}
+            </span>
             <Button
-              variant="outline"
+              variant="default"
+              className="h-11 min-w-36 rounded-xl"
               onClick={toggleRest}
               disabled={deadline === null && paused === null}
             >
+              {paused !== null ? <Play className="size-4" /> : <Pause className="size-4" />}
               {paused !== null ? "Resume rest" : "Pause rest"}
             </Button>
           </div>
@@ -203,7 +216,7 @@ export function WorkoutSession({ id }: { id: string }) {
         description="Record one set at a time. Saved sets stay with your workout."
       >
         {running && (deadline !== null || paused !== null) && (
-          <div className="mb-5 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-primary/25 bg-primary/5 p-4">
+          <div className="sticky top-0 z-10 mb-3 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-primary/30 bg-card p-3 shadow-sm">
             <div>
               <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">
                 Recovery time
@@ -212,7 +225,13 @@ export function WorkoutSession({ id }: { id: string }) {
                 {restSeconds > 0 ? fmtDuration(restSeconds) : "Rest complete"}
               </p>
             </div>
-            <Button type="button" variant="outline" className="rounded-xl" onClick={toggleRest}>
+            <Button
+              type="button"
+              variant="default"
+              className="h-11 min-w-36 rounded-xl"
+              onClick={toggleRest}
+            >
+              {paused !== null ? <Play className="size-4" /> : <Pause className="size-4" />}
               {paused !== null ? "Resume rest" : "Pause rest"}
             </Button>
           </div>
@@ -232,7 +251,7 @@ export function WorkoutSession({ id }: { id: string }) {
                   <img
                     src={`/exercises/${getExerciseGuide(e.exercise.name)!.slug}-0.${getExerciseGuide(e.exercise.name)!.extension}`}
                     alt={`${e.exercise.name} setup`}
-                    className="mb-4 aspect-video w-full rounded-2xl border object-contain bg-elevated"
+                    className="mb-3 h-36 w-full rounded-xl border object-contain bg-elevated sm:h-44"
                   />
                 )}
                 <div className="mb-4">
@@ -279,7 +298,8 @@ export function WorkoutSession({ id }: { id: string }) {
                   ))}
                 </div>
                 {running &&
-                  (e.status === "pending" || editing?.workout_session_exercise_id === e.id) && (
+                  ((e.status === "pending" && e.sets.length < e.target_sets) ||
+                    editing?.workout_session_exercise_id === e.id) && (
                     <form
                       id={formId}
                       key={
@@ -287,7 +307,7 @@ export function WorkoutSession({ id }: { id: string }) {
                           ? editing.id
                           : `new-${e.sets.length}`
                       }
-                      className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4"
+                      className="grid gap-3 sm:grid-cols-2"
                       onSubmit={(ev) => {
                         ev.preventDefault();
                         if (saving.current) return;
@@ -409,7 +429,12 @@ export function WorkoutSession({ id }: { id: string }) {
                         Next exercise <ArrowRight className="size-4" />
                       </Button>
                     )}
-                    {e.status === "pending" ? (
+                    {e.sets.length >= e.target_sets ? (
+                      <span className="inline-flex items-center gap-2 rounded-full border border-primary/30 bg-primary/10 px-4 py-2 text-sm font-semibold text-primary">
+                        <CheckCheck className="size-4" />
+                        Completed · all sets recorded
+                      </span>
+                    ) : e.status === "pending" ? (
                       <>
                         <Button
                           variant="outline"

@@ -68,7 +68,7 @@ vi.mock("@/lib/data", () => {
     },
   };
 });
-import { Workouts } from "./Workouts";
+import { Workouts, PlanEditor } from "./Workouts";
 afterEach(() => {
   cleanup();
   vi.clearAllMocks();
@@ -114,4 +114,33 @@ describe("Workout page detail flows", () => {
     expect(within(dialog).getByLabelText("Day")).toBeInTheDocument();
     expect(within(dialog).getByLabelText("Plan")).toBeInTheDocument();
   });
+});
+
+it("opens exercise targets in a dedicated modal with a fixed save action", async () => {
+  render(<PlanEditor id="p1" close={() => {}} />);
+  expect(screen.queryByLabelText("Sets")).not.toBeInTheDocument();
+  fireEvent.click(screen.getByRole("button", { name: "Edit targets for Push-Up" }));
+  const dialog = await screen.findByRole("dialog", { name: "Edit Push-Up" });
+  expect(within(dialog).getByLabelText("Sets")).toHaveValue(3);
+  fireEvent.change(within(dialog).getByLabelText("Sets"), { target: { value: "4" } });
+  fireEvent.click(within(dialog).getByRole("button", { name: "Save targets" }));
+  expect(state.mutate).toHaveBeenCalledWith(
+    expect.objectContaining({
+      item: expect.objectContaining({ id: "pe1" }),
+      form: expect.any(HTMLFormElement),
+    }),
+  );
+  const payload = state.mutate.mock.calls.at(-1)![0];
+  expect(new FormData(payload.form).get("sets")).toBe("4");
+});
+it("keeps add-exercise inputs hidden until its modal is opened", async () => {
+  render(<PlanEditor id="p1" close={() => {}} />);
+  expect(screen.queryByLabelText("Exercise")).not.toBeInTheDocument();
+  fireEvent.click(screen.getByRole("button", { name: "Add an exercise" }));
+  const dialog = await screen.findByRole("dialog", { name: "Add an exercise" });
+  expect(within(dialog).getByLabelText("Exercise")).toHaveValue("e1");
+  fireEvent.click(within(dialog).getByRole("button", { name: "Add to workout" }));
+  expect(state.mutate).toHaveBeenCalledWith(expect.any(HTMLFormElement));
+  fireEvent.click(within(dialog).getByRole("button", { name: "Cancel" }));
+  expect(screen.queryByLabelText("Exercise")).not.toBeInTheDocument();
 });

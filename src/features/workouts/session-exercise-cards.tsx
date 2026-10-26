@@ -7,15 +7,17 @@ export function SessionExerciseCards({
   exercises: SessionExercise[];
   onOpen: (id: string) => void;
 }) {
-  const completed = exercises.filter((e) => e.status === "completed").length;
+  const completed = exercises.filter(
+    (e) => e.status === "completed" || e.sets.length >= e.target_sets,
+  ).length;
   const total = exercises.reduce((sum, e) => sum + e.target_sets, 0);
   const saved = exercises.reduce((sum, e) => sum + e.sets.length, 0);
   const percent = exercises.length ? Math.round((completed / exercises.length) * 100) : 0;
   return (
-    <section className="space-y-5">
-      <div className="flex items-center gap-5 rounded-3xl border bg-card p-5 sm:p-6">
+    <section className="space-y-3">
+      <div className="flex items-center gap-3 rounded-2xl border bg-card p-4">
         <div
-          className="relative size-20 shrink-0"
+          className="relative size-16 shrink-0"
           role="img"
           aria-label={`${completed} of ${exercises.length} exercises complete`}
         >
@@ -53,14 +55,14 @@ export function SessionExerciseCards({
             key={e.id}
             type="button"
             onClick={() => onOpen(e.id)}
-            className="group rounded-2xl border bg-card p-5 text-left transition-colors hover:border-primary/50 hover:bg-primary/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            className="group rounded-2xl border bg-card p-4 text-left transition-colors hover:border-primary/50 hover:bg-primary/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             aria-label={`Open ${e.exercise.name}`}
           >
             <div className="flex items-center gap-3">
               <span
-                className={`grid size-10 shrink-0 place-items-center rounded-xl ${e.status === "completed" ? "bg-primary/15 text-primary" : "bg-elevated text-muted-foreground"}`}
+                className={`grid size-10 shrink-0 place-items-center rounded-xl ${e.status === "completed" || e.sets.length >= e.target_sets ? "bg-primary/15 text-primary" : "bg-elevated text-muted-foreground"}`}
               >
-                {e.status === "completed" ? (
+                {e.status === "completed" || e.sets.length >= e.target_sets ? (
                   <Check className="size-5" />
                 ) : (
                   <Dumbbell className="size-5" />
@@ -74,13 +76,20 @@ export function SessionExerciseCards({
               </span>
               <ChevronRight className="size-4 text-muted-foreground" />
             </div>
-            <p className="mt-4 text-xs text-muted-foreground">
+            <p className="mt-3 text-xs text-muted-foreground">
               {e.target_sets} sets ×{" "}
               {e.exercise.tracking_type === "time"
                 ? `${e.target_duration_seconds ?? 30}s`
                 : `${e.target_reps_min ?? 8}–${e.target_reps_max ?? 12} reps`}{" "}
-              · {e.status}
+              ·{" "}
+              {e.status === "completed" || e.sets.length >= e.target_sets ? "Completed" : e.status}
             </p>
+            {(e.status === "completed" || e.sets.length >= e.target_sets) && (
+              <span className="mt-3 inline-flex items-center gap-1.5 rounded-full border border-primary/30 bg-primary/10 px-2.5 py-1 text-[11px] font-semibold text-primary">
+                <Check className="size-3" />
+                Completed
+              </span>
+            )}
             <div className="mt-3 flex gap-1.5" aria-hidden="true">
               {Array.from({ length: Math.min(20, e.target_sets) }, (_, index) => (
                 <span
@@ -92,7 +101,7 @@ export function SessionExerciseCards({
             <p className="mt-2 text-xs text-muted-foreground">
               {e.sets.length} / {e.target_sets} sets recorded
             </p>
-            <span className="mt-4 inline-flex min-h-9 items-center gap-2 rounded-lg border border-primary/30 bg-primary/10 px-3 text-xs font-semibold text-primary group-hover:bg-primary/20">
+            <span className="mt-2 inline-flex min-h-8 items-center gap-2 rounded-lg border border-primary/30 bg-primary/10 px-3 text-xs font-semibold text-primary group-hover:bg-primary/20">
               Open exercise <ChevronRight className="size-3.5" />
             </span>
           </button>

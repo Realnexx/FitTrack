@@ -1,15 +1,6 @@
+import { ResponsiveModal } from "@/components/responsive-modal";
 import { useId, useState } from "react";
-import {
-  Save,
-  Plus,
-  ArrowUp,
-  ArrowDown,
-  Trash2,
-  Dumbbell,
-  Loader2,
-  Settings2,
-  ChevronDown,
-} from "lucide-react";
+import { Plus, ArrowUp, ArrowDown, Trash2, Dumbbell, Settings2, ArrowUpRight } from "lucide-react";
 import { ModalActionBar, ModalFormActions } from "@/components/modal-actions";
 import { supabase } from "@/integrations/supabase/client";
 import { usePlan, useExercises, useAction, unwrap, uid, qk, type PlanExercise } from "@/lib/data";
@@ -27,6 +18,10 @@ export function PlanEditor({
   embedded?: boolean;
 }) {
   const formId = useId();
+  const targetFormId = useId();
+  const addFormId = useId();
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [addOpen, setAddOpen] = useState(false);
   const [dirty, setDirty] = useState(false);
   const [newExerciseId, setNewExerciseId] = useState("");
   const plan = usePlan(id);
@@ -51,6 +46,7 @@ export function PlanEditor({
     async (form: HTMLFormElement) => {
       const v = values(form);
       const exercise = library.data?.find((e) => e.id === v.text("exercise"));
+      if (!exercise) throw new Error("Choose an exercise from the library.");
       unwrap(
         await supabase.from("workout_plan_exercises").insert({
           user_id: await uid(),
@@ -66,7 +62,11 @@ export function PlanEditor({
         }),
       );
     },
-    { invalidate: [qk.plan(id), qk.plans], success: "Exercise added" },
+    {
+      invalidate: [qk.plan(id), qk.plans],
+      success: "Exercise added",
+      onSuccess: () => setAddOpen(false),
+    },
   );
   const edit = useAction(
     async ({ item, form }: { item: PlanExercise; form: HTMLFormElement }) => {
@@ -85,7 +85,11 @@ export function PlanEditor({
           .eq("id", item.id),
       );
     },
-    { invalidate: [qk.plan(id)], success: "Exercise targets updated" },
+    {
+      invalidate: [qk.plan(id)],
+      success: "Exercise targets updated",
+      onSuccess: () => setEditingId(null),
+    },
   );
   const remove = useAction(
     async (item: string) =>
@@ -107,38 +111,32 @@ export function PlanEditor({
   if (plan.error || library.error) return <ErrorBlock error={plan.error || library.error} />;
   if (!plan.data) return <p>Plan not found.</p>;
   const chosen = library.data?.find((e) => e.id === newExerciseId) ?? library.data?.[0];
+  const selected = plan.data.items.find((item) => item.id === editingId);
   const busy =
     save.isPending || add.isPending || edit.isPending || remove.isPending || move.isPending;
   return (
-    <div className="space-y-7">
+    <div className="space-y-5">
       {!embedded && (
         <div className="flex items-center justify-between">
           <h2 className="font-display text-xl font-semibold">Edit workout plan</h2>
-          <Button type="button" variant="ghost" onClick={close}>
+          <Button type="button" variant="outline" onClick={close}>
             Close
           </Button>
         </div>
       )}
       <section>
-        <div className="mb-4 flex items-center gap-3">
-          <span className="grid size-9 place-items-center rounded-xl bg-primary/10 text-primary">
-            <Settings2 className="size-4" />
-          </span>
-          <div>
-            <h3 className="text-sm font-semibold">Plan details</h3>
-            <p className="mt-0.5 text-xs text-muted-foreground">
-              Give your routine a clear name and focus.
-            </p>
-          </div>
-        </div>
+        <h3 className="mb-3 flex items-center gap-2 text-sm font-semibold">
+          <Settings2 className="size-4 text-primary" />
+          Plan details
+        </h3>
         <form
           id={formId}
           key={id}
           className="space-y-4"
           onChange={() => setDirty(true)}
-          onSubmit={(e) => {
-            e.preventDefault();
-            save.mutate(e.currentTarget);
+          onSubmit={(event) => {
+            event.preventDefault();
+            if (!save.isPending) save.mutate(event.currentTarget);
           }}
         >
           <Field label="Plan name">
@@ -147,7 +145,6 @@ export function PlanEditor({
               required
               maxLength={100}
               defaultValue={plan.data.plan.name}
-              placeholder="e.g. Full body strength"
               disabled={save.isPending}
               className="h-11 rounded-xl bg-elevated/30"
             />
@@ -155,38 +152,41 @@ export function PlanEditor({
           <Field label="Description">
             <Input
               name="description"
+              maxLength={300}
               defaultValue={plan.data.plan.description ?? ""}
-              placeholder="A short note about this workout"
               disabled={save.isPending}
               className="h-11 rounded-xl bg-elevated/30"
             />
           </Field>
         </form>
       </section>
-      <section className="border-t pt-6">
-        <div className="mb-4 flex items-center justify-between">
+      <section className="border-t pt-5">
+        <div className="mb-3 flex items-center justify-between gap-3">
           <div>
             <h3 className="text-sm font-semibold">Exercises & targets</h3>
             <p className="mt-1 text-xs text-muted-foreground">
-              Save targets on each exercise. Order changes save immediately.
+              Open an exercise to adjust its targets.
             </p>
           </div>
-          <span className="rounded-full border px-2.5 py-1 text-xs text-muted-foreground">
+          <span className="shrink-0 rounded-full border px-2.5 py-1 text-xs text-muted-foreground">
             {plan.data.items.length} exercises
           </span>
         </div>
-        <div className="space-y-3">
+        <div className="space-y-2">
           {plan.data.items.map((item, i) => (
-            <details
-              key={item.id}
-              className="group overflow-hidden rounded-xl border bg-elevated/15"
-            >
-              <summary className="flex cursor-pointer list-none items-center gap-3 p-4 [&::-webkit-details-marker]:hidden">
-                <span className="grid size-8 shrink-0 place-items-center rounded-lg bg-primary/10 text-xs font-semibold text-primary">
+            <article key={item.id} className="rounded-2xl border bg-card">
+              <button
+                type="button"
+                disabled={busy}
+                onClick={() => setEditingId(item.id)}
+                aria-label={`Edit targets for ${item.exercise.name}`}
+                className="flex w-full items-center gap-3 rounded-t-2xl p-4 text-left transition-colors hover:bg-primary/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              >
+                <span className="grid size-9 shrink-0 place-items-center rounded-xl bg-primary/10 text-xs font-semibold text-primary">
                   {String(i + 1).padStart(2, "0")}
                 </span>
                 <span className="min-w-0 flex-1">
-                  <span className="block text-sm font-medium">{item.exercise.name}</span>
+                  <span className="block text-sm font-semibold">{item.exercise.name}</span>
                   <span className="mt-1 block text-xs text-muted-foreground">
                     {item.target_sets} sets ·{" "}
                     {item.exercise.tracking_type === "time"
@@ -195,170 +195,174 @@ export function PlanEditor({
                     · {item.rest_seconds}s rest
                   </span>
                 </span>
-                <ChevronDown className="size-4 shrink-0 text-muted-foreground transition-transform group-open:rotate-180" />
-              </summary>
-              <div className="border-t p-4">
-                <form
-                  className="grid grid-cols-2 gap-4 sm:grid-cols-3"
-                  onSubmit={(e) => {
-                    e.preventDefault();
-                    edit.mutate({ item, form: e.currentTarget });
-                  }}
-                >
-                  <NumberField
-                    label="Sets"
-                    name="sets"
-                    min={1}
-                    max={20}
-                    step="1"
-                    value={item.target_sets}
-                  />
-                  {item.exercise.tracking_type === "time" ? (
-                    <NumberField
-                      label="Duration (sec)"
-                      name="duration"
-                      min={1}
-                      max={3600}
-                      step="1"
-                      value={item.target_duration_seconds ?? 30}
-                    />
-                  ) : (
-                    <NumberField
-                      label="Target reps"
-                      name="reps"
-                      min={1}
-                      max={200}
-                      step="1"
-                      value={item.target_reps_min ?? 10}
-                    />
-                  )}
-                  <NumberField
-                    label="Rest (sec)"
-                    name="rest"
-                    min={0}
-                    max={900}
-                    step="1"
-                    value={item.rest_seconds}
-                  />
-                  <div className="col-span-2 flex flex-wrap items-center justify-between gap-3 border-t pt-4 sm:col-span-3">
-                    <div className="flex items-center gap-1">
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="icon"
-                        className="size-9 rounded-lg"
-                        aria-label={`Move ${item.exercise.name} up`}
-                        disabled={i === 0 || busy}
-                        onClick={() => move.mutate({ item, index: i - 1 })}
-                      >
-                        <ArrowUp />
-                      </Button>
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="icon"
-                        className="size-9 rounded-lg"
-                        aria-label={`Move ${item.exercise.name} down`}
-                        disabled={i === plan.data!.items.length - 1 || busy}
-                        onClick={() => move.mutate({ item, index: i + 1 })}
-                      >
-                        <ArrowDown />
-                      </Button>
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="icon"
-                        className="size-9 rounded-lg text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
-                        aria-label={`Remove ${item.exercise.name}`}
-                        disabled={busy}
-                        onClick={() => remove.mutate(item.id)}
-                      >
-                        <Trash2 />
-                      </Button>
-                    </div>
-                    <Button variant="secondary" disabled={busy} className="h-10 rounded-xl">
-                      {edit.isPending && edit.variables?.item.id === item.id ? (
-                        <Loader2 className="animate-spin" />
-                      ) : (
-                        <Save />
-                      )}
-                      {edit.isPending && edit.variables?.item.id === item.id
-                        ? "Saving…"
-                        : "Save targets"}
-                    </Button>
-                  </div>
-                </form>
+                <ArrowUpRight className="size-4 shrink-0 text-primary" />
+              </button>
+              <div className="flex items-center justify-between gap-2 border-t px-3 py-2">
+                <span className="text-[11px] text-muted-foreground">Order saves immediately</span>
+                <div className="flex gap-1">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="icon"
+                    aria-label={`Move ${item.exercise.name} up`}
+                    disabled={i === 0 || busy}
+                    onClick={() => move.mutate({ item, index: i - 1 })}
+                  >
+                    <ArrowUp />
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="icon"
+                    aria-label={`Move ${item.exercise.name} down`}
+                    disabled={i === plan.data!.items.length - 1 || busy}
+                    onClick={() => move.mutate({ item, index: i + 1 })}
+                  >
+                    <ArrowDown />
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    className="text-destructive hover:bg-destructive/10 hover:text-destructive"
+                    aria-label={`Remove ${item.exercise.name}`}
+                    disabled={busy}
+                    onClick={() => remove.mutate(item.id)}
+                  >
+                    <Trash2 />
+                  </Button>
+                </div>
               </div>
-            </details>
+            </article>
           ))}
         </div>
         {!plan.data.items.length && (
-          <div className="rounded-xl border border-dashed p-6 text-center">
-            <Dumbbell className="mx-auto mb-3 size-6 text-muted-foreground" />
-            <p className="text-sm font-medium">Make room for your first exercise</p>
-            <p className="mt-1 text-xs text-muted-foreground">
-              Choose a movement below to start building your routine.
+          <div className="rounded-xl border border-dashed p-5 text-center">
+            <Dumbbell className="mx-auto mb-2 size-6 text-primary" />
+            <p className="text-sm text-muted-foreground">
+              Add your first exercise to build this routine.
             </p>
           </div>
         )}
-      </section>
-      <details className="group rounded-xl border border-dashed bg-primary/[0.03]">
-        <summary className="flex cursor-pointer list-none items-center gap-3 p-4 [&::-webkit-details-marker]:hidden">
-          <span className="grid size-9 place-items-center rounded-xl bg-primary/10 text-primary">
-            <Plus className="size-4" />
-          </span>
-          <span className="flex-1 text-sm font-semibold">Add an exercise</span>
-          <ChevronDown className="size-4 text-muted-foreground transition-transform group-open:rotate-180" />
-        </summary>
-        <form
-          className="grid gap-4 border-t p-4 sm:grid-cols-2"
-          onSubmit={(e) => {
-            e.preventDefault();
-            add.mutate(e.currentTarget);
-          }}
+        <Button
+          type="button"
+          variant="tonal"
+          className="mt-3 h-12 w-full border-primary/40"
+          disabled={busy}
+          onClick={() => setAddOpen(true)}
         >
-          <Field label="Exercise">
-            <select
-              name="exercise"
-              className={selectClass}
-              required
-              value={chosen?.id ?? ""}
-              onChange={(e) => setNewExerciseId(e.target.value)}
+          <Plus />
+          Add an exercise
+        </Button>
+      </section>
+      <ResponsiveModal
+        open={editingId !== null}
+        onOpenChange={(open) => {
+          if (!open && !edit.isPending) setEditingId(null);
+        }}
+        title={selected ? `Edit ${selected.exercise.name}` : "Exercise targets"}
+        description="Set the amount of work and recovery for this movement."
+      >
+        {selected && (
+          <>
+            <form
+              id={targetFormId}
+              key={selected.id}
+              className="space-y-4"
+              onSubmit={(event) => {
+                event.preventDefault();
+                if (!edit.isPending) edit.mutate({ item: selected, form: event.currentTarget });
+              }}
             >
-              {library.data?.map((e) => (
-                <option key={e.id} value={e.id}>
-                  {e.name}
-                </option>
-              ))}
-            </select>
-          </Field>
-          <NumberField label="Sets" name="sets" value={3} min={1} max={20} step="1" />
-          {chosen?.tracking_type === "time" ? (
-            <NumberField
-              label="Duration (sec)"
-              name="duration"
-              value={30}
-              min={1}
-              max={3600}
-              step="1"
-            />
-          ) : (
-            <NumberField
-              label="Target repetitions"
-              name="reps"
-              value={10}
-              min={1}
-              max={200}
-              step="1"
-            />
-          )}
-          <NumberField label="Rest seconds" name="rest" value={90} min={0} max={900} step="1" />
-          <Button disabled={busy || !chosen} className="h-11 rounded-xl sm:col-span-2">
-            {add.isPending ? <Loader2 className="animate-spin" /> : <Plus />}
-            {add.isPending ? "Adding exercise…" : "Add to workout"}
-          </Button>
-        </form>
-      </details>
+              <div className="rounded-xl border bg-primary/5 p-4 text-sm">
+                <p className="font-semibold">{selected.exercise.name}</p>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  Changes apply to future workouts. Existing session targets remain unchanged.
+                </p>
+              </div>
+              <fieldset disabled={edit.isPending} className="grid grid-cols-2 gap-4">
+                <TargetFields
+                  timed={selected.exercise.tracking_type === "time"}
+                  sets={selected.target_sets}
+                  reps={selected.target_reps_min ?? 10}
+                  duration={selected.target_duration_seconds ?? 30}
+                  rest={selected.rest_seconds}
+                />
+              </fieldset>
+            </form>
+            <ModalActionBar>
+              <ModalFormActions
+                form={targetFormId}
+                onCancel={() => setEditingId(null)}
+                pending={edit.isPending}
+                label="Save targets"
+                pendingLabel="Saving targets…"
+                hint="Save these targets to your workout plan."
+              />
+            </ModalActionBar>
+          </>
+        )}
+      </ResponsiveModal>
+      <ResponsiveModal
+        open={addOpen}
+        onOpenChange={(open) => {
+          if (!open && !add.isPending) setAddOpen(false);
+        }}
+        title="Add an exercise"
+        description="Choose a movement and configure its training targets."
+      >
+        {addOpen && (
+          <>
+            <form
+              id={addFormId}
+              className="space-y-4"
+              onSubmit={(event) => {
+                event.preventDefault();
+                if (!add.isPending) add.mutate(event.currentTarget);
+              }}
+            >
+              <Field label="Exercise">
+                <select
+                  name="exercise"
+                  className={selectClass}
+                  required
+                  disabled={add.isPending}
+                  value={chosen?.id ?? ""}
+                  onChange={(event) => setNewExerciseId(event.target.value)}
+                >
+                  {!library.data?.length && <option value="">No exercises available</option>}
+                  {library.data?.map((exercise) => (
+                    <option key={exercise.id} value={exercise.id}>
+                      {exercise.name}
+                    </option>
+                  ))}
+                </select>
+              </Field>
+              <fieldset disabled={add.isPending} className="grid grid-cols-2 gap-4">
+                <TargetFields
+                  key={chosen?.tracking_type}
+                  timed={chosen?.tracking_type === "time"}
+                  sets={3}
+                  reps={10}
+                  duration={30}
+                  rest={90}
+                />
+              </fieldset>
+            </form>
+            <ModalActionBar>
+              <ModalFormActions
+                form={addFormId}
+                onCancel={() => setAddOpen(false)}
+                pending={add.isPending}
+                disabled={!chosen}
+                label="Add to workout"
+                pendingLabel="Adding exercise…"
+                hint="The exercise is added after the current movements."
+              />
+            </ModalActionBar>
+          </>
+        )}
+      </ResponsiveModal>
       <ModalActionBar>
         <ModalFormActions
           form={formId}
@@ -371,5 +375,37 @@ export function PlanEditor({
         />
       </ModalActionBar>
     </div>
+  );
+}
+function TargetFields({
+  timed,
+  sets,
+  reps,
+  duration,
+  rest,
+}: {
+  timed: boolean;
+  sets: number;
+  reps: number;
+  duration: number;
+  rest: number;
+}) {
+  return (
+    <>
+      <NumberField label="Sets" name="sets" min={1} max={20} step="1" value={sets} />
+      {timed ? (
+        <NumberField
+          label="Duration (sec)"
+          name="duration"
+          min={1}
+          max={3600}
+          step="1"
+          value={duration}
+        />
+      ) : (
+        <NumberField label="Target reps" name="reps" min={1} max={200} step="1" value={reps} />
+      )}
+      <NumberField label="Rest (sec)" name="rest" min={0} max={900} step="1" value={rest} />
+    </>
   );
 }

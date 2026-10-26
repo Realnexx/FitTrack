@@ -52,6 +52,7 @@ beforeAll(async () => {
     "0003_onboarding_preferences.sql",
     "0004_profile_connections.sql",
     "0005_bmi_history.sql",
+    "0006_workout_set_limits.sql",
   ])
     await db.exec(
       readFileSync(new URL("../../drizzle/migrations/" + file, import.meta.url), "utf8"),
@@ -386,4 +387,51 @@ it("keeps the saved schedule unchanged when an invalid or foreign plan is submit
   ).rejects.toThrow();
   const after = await asUser(alice, (tx) => tx.query("select * from workout_schedule order by id"));
   expect(after.rows).toEqual(before.rows);
+});
+
+it("caps workout sets, completes the exercise and preserves editing", async () => {
+  const result = await asUser(alice, (tx) =>
+    tx.query<{ id: string; target_sets: number }>(
+      "select id,target_sets from workout_session_exercises where status='pending' limit 1",
+    ),
+  );
+  const exercise = result.rows[0]!;
+  for (let n = 1; n <= exercise.target_sets; n++)
+    await asUser(alice, (tx) =>
+      tx.query(
+        "insert into workout_sets(workout_session_exercise_id,set_number,repetitions,weight_kg) values ($1,$2,10,5)",
+        [exercise.id, n],
+      ),
+    );
+  const completed = await asUser(alice, (tx) =>
+    tx.query<{ status: string }>("select status from workout_session_exercises where id=$1", [
+      exercise.id,
+    ]),
+  );
+  expect(completed.rows[0]?.status).toBe("completed");
+  await expect(
+    asUser(alice, (tx) =>
+      tx.query(
+        "insert into workout_sets(workout_session_exercise_id,set_number,repetitions) values ($1,$2,10)",
+        [exercise.id, exercise.target_sets + 1],
+      ),
+    ),
+  ).rejects.toThrow("No more sets");
+  await asUser(alice, (tx) =>
+    tx.query(
+      "update workout_sets set repetitions=12 where workout_session_exercise_id=$1 and set_number=1",
+      [exercise.id],
+    ),
+  );
+  await asUser(alice, (tx) =>
+    tx.query("delete from workout_sets where workout_session_exercise_id=$1 and set_number=1", [
+      exercise.id,
+    ]),
+  );
+  const reopened = await asUser(alice, (tx) =>
+    tx.query<{ status: string }>("select status from workout_session_exercises where id=$1", [
+      exercise.id,
+    ]),
+  );
+  expect(reopened.rows[0]?.status).toBe("pending");
 });

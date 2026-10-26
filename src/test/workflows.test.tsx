@@ -559,3 +559,46 @@ it("keeps review selections when going back and shows a spinner during saving", 
   finish({ data: null, error: null });
   await waitFor(() => expect(state.navigate).toHaveBeenCalledWith({ to: "/dashboard" }));
 });
+
+it("shows completed exercises without a new-set form while allowing edits", async () => {
+  state.session = {
+    session: {
+      id: "full",
+      title: "Workout",
+      status: "in_progress",
+      started_at: new Date().toISOString(),
+      ended_at: null,
+    },
+    exercises: [
+      {
+        id: "plank",
+        target_sets: 3,
+        target_duration_seconds: 30,
+        status: "pending",
+        rest_seconds: 60,
+        exercise: {
+          name: "Plank",
+          tracking_type: "time",
+          is_unilateral: false,
+          instructions: "Hold",
+        },
+        sets: [1, 2, 3].map((n) => ({
+          id: "set" + n,
+          workout_session_exercise_id: "plank",
+          set_number: n,
+          duration_seconds: 30,
+          weight_basis: "bodyweight",
+          side: null,
+        })),
+      },
+    ],
+  };
+  show(<WorkoutSession id="full" />);
+  fireEvent.click(screen.getByRole("button", { name: "Open Plank" }));
+  expect(await screen.findByText("Completed · all sets recorded")).toBeInTheDocument();
+  expect(screen.queryByRole("button", { name: "Complete set" })).not.toBeInTheDocument();
+  expect(screen.queryByLabelText("Duration (seconds)")).not.toBeInTheDocument();
+  fireEvent.click(screen.getAllByRole("button", { name: "Edit" })[0]!);
+  expect(screen.getByLabelText("Duration (seconds)")).toBeInTheDocument();
+  expect(screen.getByRole("button", { name: "Update set" })).toBeInTheDocument();
+});
