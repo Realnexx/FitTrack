@@ -150,7 +150,7 @@ Configure these **server-only** variables in Vercel (or your private local serve
 - `SUPABASE_URL`: the same Supabase project used by the frontend.
 - `SUPABASE_PUBLISHABLE_KEY`: that project's publishable/anon key.
 - `SUPABASE_SERVICE_ROLE_KEY`: server secret for quota reservations and scan drafts. Never expose this key in the browser.
-- `GEMINI_API_KEY`: a Google AI Studio key for a **dedicated Free-tier project without an active linked billing account**. This integration uses Google's direct `gemini-2.5-flash-lite` API, not OpenRouter.
+- `GEMINI_API_KEY`: a Google AI Studio key for a **dedicated Free-tier project without an active linked billing account**. This integration uses Google's direct `gemini-3.5-flash-lite` API, not OpenRouter. Google restricts Gemini 2.5 access for new projects; verify the selected model's current free allowance in AI Studio.
 - `MEAL_SCAN_ENABLED=true`
 - `MEAL_SCAN_FREE_TIER_CONFIRMED=true`: set only after verifying the Google project is Free tier and the selected model has a free image/text allowance. The app cannot independently inspect your billing configuration. If billing is enabled later, disable scanning and re-check this flag; code-side limits alone cannot guarantee a zero-dollar Google bill on a paid project.
 - `MEAL_SCAN_ELIGIBILITY_CONFIRMED=true`: set only after reviewing Google's current age, region and unpaid-data terms for the intended audience. Google prohibits using the API in clients directed at or likely accessed by under-18s and requires Paid Services for clients available in the EEA, UK and Switzerland. The adult profile check and consent checkbox do not by themselves establish compliance for a public app.

@@ -196,6 +196,11 @@ it("validates a successful provider response and persists the review draft", asy
   expect(await response.json()).toEqual({ scan_id: id, ...result });
   expect(state.update).toHaveBeenCalledWith({ state: "ready", result });
   expect(fetch).toHaveBeenCalledTimes(1);
+  const [url, options] = vi.mocked(fetch).mock.calls[0]!;
+  expect(url).toBe("https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash-lite:generateContent");
+  const body = JSON.parse(options!.body as string);
+  expect(body.generationConfig.thinkingConfig).toEqual({ thinkingLevel: "minimal" });
+  expect(body.generationConfig).not.toHaveProperty("temperature");
 });
 
 it("detects mismatched Supabase projects without following an untrusted issuer", async () => {
