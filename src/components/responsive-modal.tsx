@@ -35,12 +35,40 @@ export function ResponsiveModal({
 }) {
   const mobile = useIsMobile();
   const [footerTarget, setFooterTarget] = useState<HTMLDivElement | null>(null);
+  const [keyboardOpen, setKeyboardOpen] = useState(false);
+  const [viewportHeight, setViewportHeight] = useState<number | null>(null);
   const returnFocus = useRef<HTMLElement | null>(null);
   const opener =
     typeof document === "undefined" ? null : (document.activeElement as HTMLElement | null);
   useEffect(() => {
     if (open) returnFocus.current = opener;
+    else {
+      setKeyboardOpen(false);
+      setViewportHeight(null);
+    }
   }, [open]);
+  useEffect(() => {
+    if (!open || !mobile || typeof window === "undefined") return;
+    const vv = window.visualViewport;
+    if (!vv) return;
+    const updateViewport = () => {
+      const nextHeight = Math.round(vv.height);
+      setViewportHeight(nextHeight);
+      if (window.innerHeight - nextHeight > 120) {
+        setKeyboardOpen(true);
+      } else if (
+        !(
+          document.activeElement instanceof HTMLElement &&
+          document.activeElement.matches("input, textarea, select")
+        )
+      ) {
+        setKeyboardOpen(false);
+      }
+    };
+    updateViewport();
+    vv.addEventListener("resize", updateViewport);
+    return () => vv.removeEventListener("resize", updateViewport);
+  }, [open, mobile]);
   const restoreFocus = (event: Event) => {
     if (returnFocus.current?.isConnected) {
       event.preventDefault();
@@ -51,27 +79,73 @@ export function ResponsiveModal({
     return (
       <ModalFooterContext.Provider value={footerTarget}>
         <Drawer open={open} onOpenChange={onOpenChange} shouldScaleBackground={false}>
-          <DrawerContent onCloseAutoFocus={restoreFocus} className="max-h-[92dvh] rounded-t-3xl">
-            <DrawerHeader className="relative shrink-0 border-b px-5 pb-5 pr-16 text-left">
-              <DrawerTitle className="font-display text-xl">{title}</DrawerTitle>
-              <DrawerDescription>{description}</DrawerDescription>
+          <DrawerContent
+            onCloseAutoFocus={restoreFocus}
+            style={
+              keyboardOpen && viewportHeight
+                ? { maxHeight: `${Math.max(220, viewportHeight - 8)}px` }
+                : undefined
+            }
+            className="mt-2 max-h-[92dvh] rounded-t-3xl [&>div:first-child]:mt-2 [&>div:first-child]:h-1.5 [&>div:first-child]:w-12"
+          >
+            <DrawerHeader
+              className={`relative shrink-0 border-b px-4 pr-14 text-left transition-all ${
+                keyboardOpen ? "py-2" : "pt-2.5 pb-3"
+              }`}
+            >
+              <DrawerTitle className="font-display text-lg leading-snug">{title}</DrawerTitle>
+              <DrawerDescription className={keyboardOpen ? "sr-only" : "text-xs leading-snug"}>
+                {description}
+              </DrawerDescription>
               <DrawerClose asChild>
                 <Button
                   variant="ghost"
                   size="icon"
-                  className="absolute right-3 top-2 rounded-full border border-border/60 bg-elevated/60 text-muted-foreground hover:bg-elevated hover:text-foreground"
+                  className="absolute right-3 top-1.5 size-8 rounded-full border border-border/60 bg-elevated/60 text-muted-foreground hover:bg-elevated hover:text-foreground"
                   aria-label="Close dialog"
                 >
-                  <X className="size-5" />
+                  <X className="size-4" />
                 </Button>
               </DrawerClose>
             </DrawerHeader>
-            <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-5 py-5">
+            <div
+              className="min-h-0 flex-1 scroll-py-4 overflow-y-auto overscroll-contain px-4 py-3"
+              onFocusCapture={(e) => {
+                const target = e.target;
+                if (
+                  target instanceof HTMLElement &&
+                  target.matches("input, textarea, select")
+                ) {
+                  setKeyboardOpen(true);
+                  window.setTimeout(() => {
+                    if (typeof target.scrollIntoView === "function") {
+                      target.scrollIntoView({ block: "center", behavior: "smooth" });
+                    }
+                  }, 120);
+                }
+              }}
+              onBlurCapture={(e) => {
+                const next = e.relatedTarget;
+                if (
+                  !(
+                    next instanceof HTMLElement &&
+                    next.matches("input, textarea, select")
+                  )
+                ) {
+                  const vv = typeof window !== "undefined" ? window.visualViewport : null;
+                  if (!vv || window.innerHeight - vv.height <= 120) {
+                    setKeyboardOpen(false);
+                  }
+                }
+              }}
+            >
               {children}
             </div>
             <div
               ref={setFooterTarget}
-              className="pb-safe shrink-0 border-t border-border/70 bg-card px-5 py-4 empty:hidden"
+              className={`pb-safe shrink-0 border-t border-border/70 bg-card px-4 empty:hidden ${
+                keyboardOpen ? "py-2" : "py-2.5"
+              }`}
             >
               {footer}
             </div>

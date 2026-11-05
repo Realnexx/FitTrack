@@ -1,8 +1,17 @@
 import type { ReactNode } from "react";
 import { Input } from "@/components/ui/input";
-export function Field({ label, children }: { label: string; children: ReactNode }) {
+import { cn } from "@/lib/utils";
+export function Field({
+  label,
+  className,
+  children,
+}: {
+  label: string;
+  className?: string;
+  children: ReactNode;
+}) {
   return (
-    <label className="grid gap-2 text-sm font-medium">
+    <label className={cn("grid gap-1.5 text-sm font-medium sm:gap-2", className)}>
       {label}
       {children}
     </label>

@@ -156,19 +156,19 @@ export function CustomFoodModal({
       title="Create a custom food"
       description="Use the nutrition label or recipe values for one serving."
     >
-      <div className="mb-5 rounded-xl border bg-primary/5 p-4 text-sm text-muted-foreground">
+      <div className="mb-3 rounded-xl border bg-primary/5 px-3 py-2 text-xs text-muted-foreground sm:mb-5 sm:p-4 sm:text-sm">
         Enter all nutrition values for the serving size below. Your food will be available in the
         food library.
       </div>
       <form
         id={formId}
-        className="grid gap-4 sm:grid-cols-2"
+        className="grid grid-cols-2 gap-3 sm:gap-4"
         onSubmit={(e) => {
           e.preventDefault();
           if (!pending) onSave(e.currentTarget);
         }}
       >
-        <Field label="Food name">
+        <Field label="Food name" className="col-span-2 sm:col-span-1">
           <Input name="name" required maxLength={100} />
         </Field>
         <NumberField label="Serving size" name="size" min={0.01} max={10000} />
@@ -183,7 +183,7 @@ export function CustomFoodModal({
         <NumberField label="Protein (g)" name="protein" min={0} max={1000} />
         <NumberField label="Carbohydrates (g)" name="carbs" min={0} max={1000} />
         <NumberField label="Fat (g)" name="fat" min={0} max={1000} />
-        <Field label="Label or recipe source">
+        <Field label="Label or recipe source" className="col-span-2 sm:col-span-1">
           <Input name="source" maxLength={300} />
         </Field>
       </form>

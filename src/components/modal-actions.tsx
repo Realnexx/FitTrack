@@ -30,11 +30,13 @@ export function ModalFormActions({
   hint?: string;
 }) {
   return (
-    <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+    <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
       <p
         role="status"
         aria-live="polite"
-        className="flex items-center gap-2 text-xs text-muted-foreground"
+        className={`items-center gap-2 text-xs text-muted-foreground ${
+          saved || pending ? "flex" : "hidden sm:flex"
+        }`}
       >
         {saved ? (
           <>
@@ -50,13 +52,13 @@ export function ModalFormActions({
           hint
         )}
       </p>
-      <div className="grid grid-cols-1 gap-3 min-[400px]:grid-cols-[auto_minmax(0,1fr)] sm:flex sm:shrink-0">
+      <div className="grid grid-cols-[auto_minmax(0,1fr)] gap-2.5 sm:flex sm:shrink-0 sm:gap-3">
         <Button
           type="button"
           variant="outline"
           onClick={onCancel}
           disabled={pending}
-          className="h-11 rounded-xl border-border/80 px-5"
+          className="h-10 rounded-xl border-border/80 px-4 sm:h-11 sm:px-5"
         >
           Cancel
         </Button>
@@ -65,7 +67,7 @@ export function ModalFormActions({
           form={form}
           disabled={pending || disabled}
           aria-busy={pending}
-          className="min-h-11 h-auto whitespace-normal rounded-xl px-6 py-3 text-center font-semibold leading-snug transition-all active:scale-[0.98] sm:min-w-36"
+          className="min-h-10 h-auto whitespace-normal rounded-xl px-5 py-2.5 text-center font-semibold leading-snug transition-all active:scale-[0.98] sm:min-h-11 sm:min-w-36 sm:px-6 sm:py-3"
         >
           {pending ? <Loader2 className="size-4 animate-spin" /> : <Save className="size-4" />}
           <span className="min-w-0">{pending ? pendingLabel : label}</span>
