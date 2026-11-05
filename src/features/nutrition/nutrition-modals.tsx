@@ -156,7 +156,7 @@ export function CustomFoodModal({
       title="Create a custom food"
       description="Use the nutrition label or recipe values for one serving."
     >
-      <div className="mb-3 rounded-xl border bg-primary/5 px-3 py-2 text-xs text-muted-foreground sm:mb-5 sm:p-4 sm:text-sm">
+      <div className="mb-5 hidden rounded-xl border bg-primary/5 p-4 text-sm text-muted-foreground sm:block">
         Enter all nutrition values for the serving size below. Your food will be available in the
         food library.
       </div>

@@ -51,17 +51,20 @@ export function ResponsiveModal({
     if (!open || !mobile || typeof window === "undefined") return;
     const vv = window.visualViewport;
     if (!vv) return;
+    const initialHeight = window.innerHeight;
     const updateViewport = () => {
       const nextHeight = Math.round(vv.height);
       setViewportHeight(nextHeight);
-      if (window.innerHeight - nextHeight > 120) {
-        setKeyboardOpen(true);
-      } else if (
-        !(
-          document.activeElement instanceof HTMLElement &&
-          document.activeElement.matches("input, textarea, select")
-        )
+      const active = document.activeElement;
+      const inputFocused =
+        active instanceof HTMLElement && active.matches("input, textarea, select");
+      if (
+        inputFocused ||
+        initialHeight - nextHeight > 120 ||
+        window.innerHeight - nextHeight > 120
       ) {
+        setKeyboardOpen(true);
+      } else {
         setKeyboardOpen(false);
       }
     };
@@ -83,10 +86,14 @@ export function ResponsiveModal({
             onCloseAutoFocus={restoreFocus}
             style={
               keyboardOpen && viewportHeight
-                ? { maxHeight: `${Math.max(220, viewportHeight - 8)}px` }
+                ? { maxHeight: `${Math.max(220, viewportHeight)}px` }
                 : undefined
             }
-            className="mt-2 max-h-[92dvh] rounded-t-3xl [&>div:first-child]:mt-2 [&>div:first-child]:h-1.5 [&>div:first-child]:w-12"
+            className={
+              keyboardOpen
+                ? "mt-0 max-h-dvh rounded-t-none border-t-0 [&>div:first-child]:hidden"
+                : "mt-2 max-h-[96dvh] rounded-t-3xl [&>div:first-child]:mt-2 [&>div:first-child]:h-1.5 [&>div:first-child]:w-12"
+            }
           >
             <DrawerHeader
               className={`relative shrink-0 border-b px-4 pr-14 text-left transition-all ${
@@ -109,7 +116,7 @@ export function ResponsiveModal({
               </DrawerClose>
             </DrawerHeader>
             <div
-              className="min-h-0 flex-1 scroll-py-4 overflow-y-auto overscroll-contain px-4 py-3"
+              className="min-h-0 flex-1 scroll-py-3 overflow-y-auto overscroll-contain px-4 py-3"
               onFocusCapture={(e) => {
                 const target = e.target;
                 if (
@@ -119,7 +126,7 @@ export function ResponsiveModal({
                   setKeyboardOpen(true);
                   window.setTimeout(() => {
                     if (typeof target.scrollIntoView === "function") {
-                      target.scrollIntoView({ block: "center", behavior: "smooth" });
+                      target.scrollIntoView({ block: "nearest", behavior: "smooth" });
                     }
                   }, 120);
                 }
@@ -132,22 +139,17 @@ export function ResponsiveModal({
                     next.matches("input, textarea, select")
                   )
                 ) {
-                  const vv = typeof window !== "undefined" ? window.visualViewport : null;
-                  if (!vv || window.innerHeight - vv.height <= 120) {
-                    setKeyboardOpen(false);
-                  }
+                  setKeyboardOpen(false);
                 }
               }}
             >
               {children}
-            </div>
-            <div
-              ref={setFooterTarget}
-              className={`pb-safe shrink-0 border-t border-border/70 bg-card px-4 empty:hidden ${
-                keyboardOpen ? "py-2" : "py-2.5"
-              }`}
-            >
-              {footer}
+              <div
+                ref={setFooterTarget}
+                className="pb-safe mt-4 border-t border-border/70 pt-3 empty:hidden"
+              >
+                {footer}
+              </div>
             </div>
           </DrawerContent>
         </Drawer>
